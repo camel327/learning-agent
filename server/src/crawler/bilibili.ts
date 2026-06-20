@@ -1,5 +1,4 @@
 // 阶段 2：B站视频搜索 + 评分排序
-// TODO: P3 实现
 
 export interface VideoResult {
   title: string
@@ -26,12 +25,84 @@ function scoreVideo(video: VideoResult): number {
 }
 
 /**
+ * B站播放量格式转换
+ * "12.5万" → 125000, "1.2亿" → 120000000
+ */
+function parsePlayCount(play: string | number): number {
+  if (typeof play === 'number') return play
+  const str = play.toString().trim()
+  if (!str || str === '-') return 0
+  if (str.includes('亿')) return parseFloat(str) * 100000000
+  if (str.includes('万')) return parseFloat(str) * 10000
+  return parseInt(str) || 0
+}
+
+/**
  * 搜索 B站视频，按综合评分排序
  */
 export async function searchBilibiliVideos(
   keyword: string,
   count: number = 5
 ): Promise<VideoResult[]> {
-  // TODO: P3 实现
-  return []
+  try {
+    const apiUrl = 'https://api.bilibili.com/x/web-interface/search/type'
+
+    const params = new URLSearchParams({
+      search_type: 'video',
+      keyword,
+      page: '1',
+      page_size: String(Math.max(count * 2, 10)), // 多拿一些，排序后取 top N
+      order: 'totalrank',
+    })
+
+    const res = await fetch(`${apiUrl}?${params}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.bilibili.com',
+        'Accept': 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      console.error(`B站搜索失败: HTTP ${res.status}`)
+      return []
+    }
+
+    const data = await res.json()
+
+    if (!data.data?.result || !Array.isArray(data.data.result)) {
+      console.error('B站搜索返回异常:', data.message || '无结果')
+      return []
+    }
+
+    const videos: VideoResult[] = data.data.result
+      .filter((item: any) => item.bvid && item.title)
+      .map((item: any) => ({
+        title: stripHtml(item.title),
+        bvid: item.bvid,
+        url: `https://www.bilibili.com/video/${item.bvid}`,
+        author: item.author || '未知',
+        playCount: parsePlayCount(item.play),
+        danmakuCount: item.video_review || 0,
+        reviewCount: item.review || 0,
+        duration: item.duration || '',
+        cover: item.pic ? `https:${item.pic}` : '',
+        pubDate: item.pubdate || 0,
+      }))
+
+    // 按综合评分排序，取 top N
+    videos.sort((a, b) => scoreVideo(b) - scoreVideo(a))
+
+    return videos.slice(0, count)
+  } catch (err) {
+    console.error('B站搜索异常:', err)
+    return []
+  }
+}
+
+/**
+ * 去除 HTML 标签
+ */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim()
 }
