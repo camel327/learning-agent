@@ -10,10 +10,10 @@
 - [x] Vite 代理配置（开发环境转发 /api 到后端）
 
 ### P2：LLM 适配层
-- [ ] LLM 适配器（统一 OpenAI 格式请求）
-- [ ] 配置管理接口（加密存储 API Key）
-- [ ] 前端配置弹窗（选择提供商、填 Key、测试连通）
-- [ ] 支持 DeepSeek / OpenAI / 通义千问
+- [x] LLM 适配器（统一 OpenAI 格式请求）
+- [x] 配置管理接口（加密存储 API Key）
+- [x] 前端配置弹窗（选择提供商、填 Key、测试连通）
+- [x] 支持 DeepSeek / OpenAI / 通义千问
 
 ### P3：爬虫模块
 - [ ] 阶段 1：知乎搜索学习路线
@@ -51,3 +51,11 @@
 - [x] 后端：/api/chat SSE 流式接口 + /api/config + /api/health
 - [x] 模块骨架：Agent / LLM 适配器 / 爬虫 / SQLite
 - [x] Vite 代理配置
+
+### P2：LLM 适配层（PR #3）
+- [x] LLM 适配器完整实现（流式 SSE + 工具调用累积）
+- [x] 支持 DeepSeek / OpenAI / 通义千问 / 自定义
+- [x] 配置管理：SQLite 存储 API Key
+- [x] /api/config CRUD + /api/config/test 连通测试
+- [x] /api/chat 接入真实 LLM 流式调用
+- [x] 前端 ApiConfig 配置弹窗 + useConfig composable
