@@ -50,3 +50,21 @@ function initTables(db: Database.Database) {
     );
   `)
 }
+
+// ---- Config 存取 ----
+
+export function getConfigValue(key: string): string | null {
+  const row = getDb().prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | undefined
+  return row?.value ?? null
+}
+
+export function setConfigValue(key: string, value: string) {
+  getDb().prepare(`
+    INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `).run(key, value)
+}
+
+export function deleteConfigValue(key: string) {
+  getDb().prepare('DELETE FROM config WHERE key = ?').run(key)
+}
