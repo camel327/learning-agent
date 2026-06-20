@@ -3,11 +3,11 @@
 ## 📋 待开发
 
 ### P1：项目骨架
-- [ ] 初始化 Vue 3 + Vite 项目
-- [ ] 初始化 Express + TypeScript 项目
-- [ ] 前端：聊天界面骨架 + SSE 流式接收
-- [ ] 后端：聊天接口 + SSE 流式返回
-- [ ] Vite 代理配置（开发环境转发 /api 到后端）
+- [x] 初始化 Vue 3 + Vite 项目
+- [x] 初始化 Express + TypeScript 项目
+- [x] 前端：聊天界面骨架 + SSE 流式接收
+- [x] 后端：聊天接口 + SSE 流式返回
+- [x] Vite 代理配置（开发环境转发 /api 到后端）
 
 ### P2：LLM 适配层
 - [ ] LLM 适配器（统一 OpenAI 格式请求）
@@ -44,4 +44,10 @@
 
 ## ✅ 已完成
 
-_（暂无）_
+### P1：项目骨架（PR #1）
+- [x] 初始化 Vue 3 + Vite 项目
+- [x] 初始化 Express + TypeScript 项目
+- [x] 前端：ChatView + ChatMessage + ChatInput + useChat composable
+- [x] 后端：/api/chat SSE 流式接口 + /api/config + /api/health
+- [x] 模块骨架：Agent / LLM 适配器 / 爬虫 / SQLite
+- [x] Vite 代理配置
