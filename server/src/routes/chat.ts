@@ -53,6 +53,8 @@ chatRouter.post('/', async (req, res) => {
   // 处理对话
   let convId = conversationId
 
+  console.log(`[Chat] 收到消息: "${message.slice(0, 50)}..."`)
+
   try {
     // 如果没有 conversationId，创建新对话
     if (!convId) {
@@ -73,6 +75,8 @@ chatRouter.post('/', async (req, res) => {
       .slice(0, -1) // 排除最后一条（刚保存的用户消息）
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
+    console.log(`[Chat] 开始调用 Agent...`)
+
     // 收集 assistant 回复
     let assistantContent = ''
 
@@ -81,14 +85,21 @@ chatRouter.post('/', async (req, res) => {
 
       if (event.type === 'content') {
         assistantContent += event.content
+      } else if (event.type === 'error') {
+        console.error(`[Chat] Agent 错误: ${event.content}`)
+      } else if (event.type === 'status') {
+        console.log(`[Chat] Agent 状态: ${event.content}`)
       }
     }
+
+    console.log(`[Chat] Agent 完成，回复长度: ${assistantContent.length}`)
 
     // 保存 assistant 回复
     if (assistantContent) {
       saveMessage(convId, 'assistant', assistantContent)
     }
   } catch (err: any) {
+    console.error(`[Chat] 异常:`, err)
     res.write(`data: ${JSON.stringify({ type: 'error', content: err.message })}\n\n`)
   }
 

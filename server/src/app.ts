@@ -9,6 +9,12 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
+// 请求日志
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`)
+  next()
+})
+
 // 路由
 app.use('/api/chat', chatRouter)
 app.use('/api/config', configRouter)

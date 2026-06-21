@@ -106,6 +106,8 @@ export async function* chatStream(
   const baseUrl = config.baseUrl || defaults.baseUrl
   const model = config.model || defaults.model
 
+  console.log(`[LLM] 调用 ${config.provider} | model=${model} | baseUrl=${baseUrl}`)
+
   const body: Record<string, unknown> = {
     model,
     messages,
@@ -116,20 +118,30 @@ export async function* chatStream(
     body.tools = tools
   }
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (err: any) {
+    console.error(`[LLM] 网络错误:`, err.message)
+    yield { type: 'error', error: `LLM 网络错误: ${err.message}` }
+    return
+  }
 
   if (!res.ok) {
     const error = await res.text()
+    console.error(`[LLM] API 错误 (${res.status}):`, error.slice(0, 200))
     yield { type: 'error', error: `LLM API error (${res.status}): ${error.slice(0, 200)}` }
     return
   }
+
+  console.log(`[LLM] 响应成功，开始流式读取`)
 
   const reader = res.body!.getReader()
   const decoder = new TextDecoder()
