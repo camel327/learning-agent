@@ -1,5 +1,14 @@
 <template>
   <div class="chat-view">
+    <Sidebar
+      :show="showSidebar"
+      :conversations="conversations"
+      :activeId="conversationId"
+      @close="showSidebar = false"
+      @select="onSelectConversation"
+      @delete="deleteConversation"
+    />
+
     <div class="messages" ref="messagesRef">
       <!-- 空状态 -->
       <div v-if="messages.length === 0" class="empty">
@@ -37,12 +46,26 @@ import { ref, watch, nextTick, onMounted } from 'vue'
 import { NSpin } from 'naive-ui'
 import ChatMessage from '../components/ChatMessage.vue'
 import ChatInput from '../components/ChatInput.vue'
+import Sidebar from '../components/Sidebar.vue'
 import { useChat } from '../composables/useChat'
 import { useConfig } from '../composables/useConfig'
 
-const { messages, isStreaming, statusText, sendMessage, clearMessages } = useChat()
+const {
+  messages,
+  isStreaming,
+  statusText,
+  conversationId,
+  conversations,
+  sendMessage,
+  clearMessages,
+  loadConversations,
+  loadConversation,
+  deleteConversation,
+} = useChat()
+
 const { config, fetchConfig } = useConfig()
 const messagesRef = ref<HTMLElement>()
+const showSidebar = ref(false)
 
 const examples = [
   '我想学 Vue 3',
@@ -53,7 +76,20 @@ const examples = [
 
 onMounted(() => {
   fetchConfig()
+  loadConversations()
 })
+
+// 对话完成后刷新列表
+watch(statusText, (newVal, oldVal) => {
+  if (oldVal && !newVal) {
+    loadConversations()
+  }
+})
+
+async function onSelectConversation(id: string) {
+  await loadConversation(id)
+  showSidebar.value = false
+}
 
 // 自动滚动到底部
 watch(messages, async () => {
@@ -63,7 +99,6 @@ watch(messages, async () => {
   }
 }, { deep: true })
 
-// 监听 statusText 变化也滚动
 watch(statusText, async () => {
   await nextTick()
   if (messagesRef.value) {
@@ -71,7 +106,7 @@ watch(statusText, async () => {
   }
 })
 
-defineExpose({ clearMessages })
+defineExpose({ clearMessages, toggleSidebar: () => { showSidebar.value = !showSidebar.value } })
 </script>
 
 <style scoped>

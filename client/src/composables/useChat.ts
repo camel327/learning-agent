@@ -5,8 +5,15 @@ export interface Message {
   content: string
 }
 
+export interface Conversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
 export interface StreamEvent {
-  type: 'content' | 'status' | 'error'
+  type: 'content' | 'status' | 'error' | 'conversation_id'
   content: string
 }
 
@@ -14,6 +21,8 @@ export function useChat() {
   const messages = ref<Message[]>([])
   const isStreaming = ref(false)
   const statusText = ref('')
+  const conversationId = ref<string | null>(null)
+  const conversations = ref<Conversation[]>([])
 
   async function sendMessage(content: string) {
     // 添加用户消息
@@ -30,11 +39,15 @@ export function useChat() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content }),
+        body: JSON.stringify({
+          message: content,
+          conversationId: conversationId.value,
+        }),
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+        throw new Error(err.error || `HTTP ${response.status}`)
       }
 
       const reader = response.body!.getReader()
@@ -63,6 +76,9 @@ export function useChat() {
               case 'error':
                 assistantMsg.content += `\n\n❌ 错误：${event.content}`
                 break
+              case 'conversation_id':
+                conversationId.value = event.content
+                break
             }
           } catch {
             // 忽略解析错误
@@ -77,9 +93,56 @@ export function useChat() {
     }
   }
 
-  function clearMessages() {
-    messages.value = []
+  async function loadConversations() {
+    try {
+      const res = await fetch('/api/chat/conversations')
+      conversations.value = await res.json()
+    } catch {
+      // 忽略
+    }
   }
 
-  return { messages, isStreaming, statusText, sendMessage, clearMessages }
+  async function loadConversation(id: string) {
+    try {
+      const res = await fetch(`/api/chat/conversations/${id}`)
+      const data = await res.json()
+      conversationId.value = data.id
+      messages.value = data.messages.map((m: any) => ({
+        role: m.role,
+        content: m.content,
+      }))
+    } catch {
+      // 忽略
+    }
+  }
+
+  async function deleteConversation(id: string) {
+    try {
+      await fetch(`/api/chat/conversations/${id}`, { method: 'DELETE' })
+      conversations.value = conversations.value.filter(c => c.id !== id)
+      if (conversationId.value === id) {
+        clearMessages()
+      }
+    } catch {
+      // 忽略
+    }
+  }
+
+  function clearMessages() {
+    messages.value = []
+    conversationId.value = null
+  }
+
+  return {
+    messages,
+    isStreaming,
+    statusText,
+    conversationId,
+    conversations,
+    sendMessage,
+    clearMessages,
+    loadConversations,
+    loadConversation,
+    deleteConversation,
+  }
 }
