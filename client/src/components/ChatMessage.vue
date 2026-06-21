@@ -1,15 +1,16 @@
 <template>
   <div class="chat-message" :class="[message.role]">
-    <div class="avatar">
+    <div class="avatar" :class="[message.role]">
       {{ message.role === 'user' ? '👤' : '🤖' }}
     </div>
-    <div class="bubble">
+    <div class="bubble" :class="[message.role]">
       <div class="content markdown-body" v-html="renderedContent" />
-      <div v-if="showSaveButton" class="actions">
+      <div v-if="showSaveButton && !saved" class="actions">
         <n-button size="tiny" quaternary :loading="saving" @click="handleSave">
           💾 保存路线
         </n-button>
       </div>
+      <div v-if="saved" class="saved-badge">✅ 已保存</div>
     </div>
   </div>
 </template>
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 const message = useMessage()
 const { savePlan } = usePlans()
 const saving = ref(false)
+const saved = ref(false)
 
 const md = new MarkdownIt({
   linkify: true,
@@ -47,7 +49,7 @@ const renderedContent = computed(() => {
 // 判断是否是学习路线（生成完成后才显示）
 const showSaveButton = computed(() => {
   if (props.message.role !== 'assistant') return false
-  if (props.isStreaming) return false  // 生成中不显示
+  if (props.isStreaming) return false
   const content = props.message.content || ''
   return (
     content.includes('学习路线') ||
@@ -58,7 +60,8 @@ const showSaveButton = computed(() => {
 })
 
 async function handleSave() {
-  // 从内容中提取主题（取第一行或前20字）
+  if (saved.value) return
+
   const content = props.message.content || ''
   const topicMatch = content.match(/[#📚]+\s*(.+?)[\n\r]/)
   const topic = topicMatch
@@ -68,6 +71,7 @@ async function handleSave() {
   saving.value = true
   try {
     await savePlan(topic, content, props.conversationId || undefined)
+    saved.value = true
     message.success('路线已保存')
     emit('saved')
   } catch (err: any) {
@@ -81,7 +85,7 @@ async function handleSave() {
 <style scoped>
 .chat-message {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 16px;
   align-items: flex-start;
 }
@@ -90,41 +94,73 @@ async function handleSave() {
   flex-direction: row-reverse;
 }
 
+/* 头像 */
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   flex-shrink: 0;
-  background: #f0f0f0;
 }
 
-.bubble {
-  max-width: 75%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  line-height: 1.6;
-  font-size: 14px;
-  overflow-wrap: break-word;
-}
-
-.user .bubble {
+.avatar.user {
   background: #18a058;
   color: white;
 }
 
-.assistant .bubble {
-  background: #f5f5f5;
-  color: #333;
+.avatar.assistant {
+  background: #e8e8e8;
 }
 
+.dark .avatar.assistant {
+  background: #444;
+}
+
+/* 气泡 */
+.bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.7;
+  font-size: 14px;
+  overflow-wrap: break-word;
+}
+
+.bubble.user {
+  background: #18a058;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.bubble.assistant {
+  background: #f0f0f0;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+.dark .bubble.assistant {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+/* 保存按钮 */
 .actions {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bubble.user .actions {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.saved-badge {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #18a058;
 }
 
 /* Markdown 样式 */
@@ -132,7 +168,7 @@ async function handleSave() {
   font-size: 16px;
   margin: 12px 0 8px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .content :deep(h3) {
@@ -187,7 +223,7 @@ async function handleSave() {
 
 .content :deep(hr) {
   border: none;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   margin: 12px 0;
 }
 
@@ -195,17 +231,25 @@ async function handleSave() {
   font-weight: 600;
 }
 
-/* 用户消息中的 Markdown 保持白色 */
-.user .content :deep(a) {
+/* 用户气泡内的 Markdown */
+.bubble.user .content :deep(a) {
   color: #a0e8c0;
 }
 
-.user .content :deep(code) {
+.bubble.user .content :deep(code) {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.user .content :deep(blockquote) {
+.bubble.user .content :deep(blockquote) {
   border-left-color: rgba(255, 255, 255, 0.5);
   color: rgba(255, 255, 255, 0.8);
+}
+
+.bubble.user .content :deep(h2) {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.bubble.user .content :deep(hr) {
+  border-top-color: rgba(255, 255, 255, 0.2);
 }
 </style>
