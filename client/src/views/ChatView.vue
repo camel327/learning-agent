@@ -2,13 +2,13 @@
   <div class="chat-view">
     <div class="messages" ref="messagesRef">
       <!-- 空状态 -->
-      <div v-if="messages.length === 0" class="empty">
+      <div v-if="chatStore.messages.length === 0" class="empty">
         <div class="empty-icon">📚</div>
         <h3>学习规划 Agent</h3>
         <p>告诉我你想学什么技术，我来帮你规划学习路线并推荐视频。</p>
         <div class="examples">
           <n-button v-for="ex in examples" :key="ex" size="small" quaternary
-            @click="sendMessage(ex)">
+            @click="chatStore.sendMessage(ex)">
             {{ ex }}
           </n-button>
         </div>
@@ -18,39 +18,37 @@
       </div>
 
       <!-- 消息列表 -->
-      <template v-for="(msg, i) in messages" :key="i">
-        <ChatMessage :message="msg" :conversationId="conversationId" :isStreaming="isStreaming" />
+      <template v-for="(msg, i) in chatStore.messages" :key="i">
+        <ChatMessage
+          :message="msg"
+          :conversationId="chatStore.conversationId"
+          :isStreaming="chatStore.isStreaming"
+          :alreadySaved="isConversationSaved"
+        />
       </template>
 
       <!-- 状态提示 -->
-      <div v-if="statusText" class="status">
-        <n-spin size="small" /> {{ statusText }}
+      <div v-if="chatStore.statusText" class="status">
+        <n-spin size="small" /> {{ chatStore.statusText }}
       </div>
     </div>
 
-    <ChatInput :disabled="isStreaming" @send="sendMessage" />
+    <ChatInput :disabled="chatStore.isStreaming" @send="chatStore.sendMessage" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { NSpin } from 'naive-ui'
 import ChatMessage from '../components/ChatMessage.vue'
 import ChatInput from '../components/ChatInput.vue'
-import { useChat } from '../composables/useChat'
+import { useChatStore } from '../stores/chat'
 import { useConfig } from '../composables/useConfig'
+import { usePlans } from '../composables/usePlans'
 
-const {
-  messages,
-  isStreaming,
-  statusText,
-  conversationId,
-  sendMessage,
-  clearMessages,
-  loadConversations,
-} = useChat()
-
+const chatStore = useChatStore()
 const { config, fetchConfig } = useConfig()
+const { plans, loadPlans } = usePlans()
 const messagesRef = ref<HTMLElement>()
 
 const examples = [
@@ -60,33 +58,44 @@ const examples = [
   '我想学 Go 语言',
 ]
 
-onMounted(() => {
-  fetchConfig()
+// 检查当前对话是否已保存过路线
+const isConversationSaved = computed(() => {
+  if (!chatStore.conversationId) return false
+  return plans.value.some(p => p.conversation_id === chatStore.conversationId)
 })
 
-// 对话完成后刷新列表（通知 App 更新侧边栏）
-watch(statusText, (newVal, oldVal) => {
+onMounted(() => {
+  fetchConfig()
+  loadPlans()
+})
+
+// 切换对话时重新加载路线列表
+watch(() => chatStore.conversationId, () => {
+  loadPlans()
+})
+
+// 对话完成后刷新列表
+watch(() => chatStore.statusText, (newVal, oldVal) => {
   if (oldVal && !newVal) {
-    loadConversations()
+    chatStore.loadConversations()
+    loadPlans() // 保存路线后也刷新
   }
 })
 
 // 自动滚动到底部
-watch(messages, async () => {
+watch(() => chatStore.messages, async () => {
   await nextTick()
   if (messagesRef.value) {
     messagesRef.value.scrollTop = messagesRef.value.scrollHeight
   }
 }, { deep: true })
 
-watch(statusText, async () => {
+watch(() => chatStore.statusText, async () => {
   await nextTick()
   if (messagesRef.value) {
     messagesRef.value.scrollTop = messagesRef.value.scrollHeight
   }
 })
-
-defineExpose({ clearMessages })
 </script>
 
 <style scoped>

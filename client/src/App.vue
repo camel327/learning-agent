@@ -5,25 +5,16 @@ import ChatView from './views/ChatView.vue'
 import PlansView from './views/PlansView.vue'
 import Sidebar from './components/Sidebar.vue'
 import ApiConfig from './components/ApiConfig.vue'
-import { useChat } from './composables/useChat'
+import { useChatStore } from './stores/chat'
 
+const chatStore = useChatStore()
 const isDark = ref(false)
 const showConfig = ref(false)
 const showSidebar = ref(false)
-const chatViewRef = ref()
 const currentView = ref<'chat' | 'plans'>('chat')
 
-const {
-  conversationId,
-  conversations,
-  clearMessages,
-  loadConversations,
-  loadConversation,
-  deleteConversation,
-} = useChat()
-
 onMounted(() => {
-  loadConversations()
+  chatStore.loadConversations()
 })
 
 function toggleDark() {
@@ -32,7 +23,7 @@ function toggleDark() {
 }
 
 function handleNewChat() {
-  clearMessages()
+  chatStore.clearMessages()
   showSidebar.value = false
 }
 
@@ -42,13 +33,13 @@ function handleSwitchView(view: 'chat' | 'plans') {
 }
 
 async function handleSelectConversation(id: string) {
-  await loadConversation(id)
+  await chatStore.loadConversation(id)
   currentView.value = 'chat'
   showSidebar.value = false
 }
 
 function handleDeleteConversation(id: string) {
-  deleteConversation(id)
+  chatStore.deleteConversation(id)
 }
 </script>
 
@@ -61,8 +52,8 @@ function handleDeleteConversation(id: string) {
           <Sidebar
             :show="showSidebar"
             :currentView="currentView"
-            :conversations="conversations"
-            :activeId="conversationId"
+            :conversations="chatStore.conversations"
+            :activeId="chatStore.conversationId"
             @close="showSidebar = false"
             @newChat="handleNewChat"
             @switchView="handleSwitchView"
@@ -88,7 +79,7 @@ function handleDeleteConversation(id: string) {
 
           <!-- 主内容 -->
           <main class="app-main">
-            <ChatView v-if="currentView === 'chat'" ref="chatViewRef" />
+            <ChatView v-if="currentView === 'chat'" />
             <PlansView v-else />
           </main>
 
