@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { getConfigValue } from '../db/index.js'
-import { chatStream } from '../llm/adapter.js'
-import type { LLMConfig, ChatMessage } from '../llm/adapter.js'
+import { runAgent } from '../agent/index.js'
+import type { LLMConfig } from '../llm/adapter.js'
 
 export const chatRouter = Router()
 
@@ -40,20 +40,12 @@ chatRouter.post('/', async (req, res) => {
   res.setHeader('Connection', 'keep-alive')
   res.setHeader('X-Accel-Buffering', 'no')
 
-  const messages: ChatMessage[] = [
-    { role: 'system', content: '你是一个有帮助的助手。' },
-    { role: 'user', content: message },
-  ]
-
   try {
-    for await (const chunk of chatStream(config, messages)) {
-      if (chunk.type === 'content' && chunk.content) {
-        res.write(`data: ${JSON.stringify({ type: 'content', content: chunk.content })}\n\n`)
-      } else if (chunk.type === 'error') {
-        res.write(`data: ${JSON.stringify({ type: 'error', content: chunk.error })}\n\n`)
-      } else if (chunk.type === 'done') {
-        break
-      }
+    // TODO: P6 从 SQLite 加载历史对话
+    const history: never[] = []
+
+    for await (const event of runAgent(message, history, config)) {
+      res.write(`data: ${JSON.stringify(event)}\n\n`)
     }
   } catch (err: any) {
     res.write(`data: ${JSON.stringify({ type: 'error', content: err.message })}\n\n`)
