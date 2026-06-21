@@ -5,16 +5,34 @@
     </div>
     <div class="bubble">
       <div class="content markdown-body" v-html="renderedContent" />
+      <div v-if="showSaveButton" class="actions">
+        <n-button size="tiny" quaternary :loading="saving" @click="handleSave">
+          💾 保存路线
+        </n-button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { NButton, useMessage } from 'naive-ui'
 import MarkdownIt from 'markdown-it'
 import type { Message } from '../composables/useChat'
+import { usePlans } from '../composables/usePlans'
 
-const props = defineProps<{ message: Message }>()
+const props = defineProps<{
+  message: Message
+  conversationId?: string | null
+}>()
+
+const emit = defineEmits<{
+  saved: []
+}>()
+
+const message = useMessage()
+const { savePlan } = usePlans()
+const saving = ref(false)
 
 const md = new MarkdownIt({
   linkify: true,
@@ -24,6 +42,38 @@ const md = new MarkdownIt({
 const renderedContent = computed(() => {
   return md.render(props.message.content || '')
 })
+
+// 判断是否是学习路线（包含阶段/知识点等关键词）
+const showSaveButton = computed(() => {
+  if (props.message.role !== 'assistant') return false
+  const content = props.message.content || ''
+  return (
+    content.includes('学习路线') ||
+    content.includes('学习规划') ||
+    (content.includes('阶段') && content.includes('知识点')) ||
+    (content.includes('推荐视频') && content.includes('阶段'))
+  )
+})
+
+async function handleSave() {
+  // 从内容中提取主题（取第一行或前20字）
+  const content = props.message.content || ''
+  const topicMatch = content.match(/[#📚]+\s*(.+?)[\n\r]/)
+  const topic = topicMatch
+    ? topicMatch[1].trim()
+    : content.slice(0, 30).replace(/[#*\n]/g, '').trim()
+
+  saving.value = true
+  try {
+    await savePlan(topic, content, props.conversationId || undefined)
+    message.success('路线已保存')
+    emit('saved')
+  } catch (err: any) {
+    message.error('保存失败：' + err.message)
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -67,6 +117,12 @@ const renderedContent = computed(() => {
 .assistant .bubble {
   background: #f5f5f5;
   color: #333;
+}
+
+.actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
 }
 
 /* Markdown 样式 */
