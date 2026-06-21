@@ -13,6 +13,8 @@ export interface VideoResult {
   pubDate: number
 }
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
 /**
  * 综合评分：播放量 0.5 + 弹幕 0.3 + 评论 0.2
  */
@@ -26,7 +28,6 @@ function scoreVideo(video: VideoResult): number {
 
 /**
  * B站播放量格式转换
- * "12.5万" → 125000, "1.2亿" → 120000000
  */
 function parsePlayCount(play: string | number): number {
   if (typeof play === 'number') return play
@@ -38,6 +39,22 @@ function parsePlayCount(play: string | number): number {
 }
 
 /**
+ * 获取 B站 Cookie（用于绕过 412 反爬）
+ */
+async function getBilibiliCookie(): Promise<string> {
+  try {
+    const res = await fetch('https://www.bilibili.com/', {
+      headers: { 'User-Agent': UA },
+      redirect: 'manual',
+    })
+    const cookies = res.headers.getSetCookie?.() || []
+    return cookies.map(c => c.split(';')[0]).join('; ')
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 搜索 B站视频，按综合评分排序
  */
 export async function searchBilibiliVideos(
@@ -45,21 +62,24 @@ export async function searchBilibiliVideos(
   count: number = 5
 ): Promise<VideoResult[]> {
   try {
-    const apiUrl = 'https://api.bilibili.com/x/web-interface/search/type'
+    // 先获取 cookie 绕过 412
+    const cookie = await getBilibiliCookie()
 
+    const apiUrl = 'https://api.bilibili.com/x/web-interface/search/type'
     const params = new URLSearchParams({
       search_type: 'video',
       keyword,
       page: '1',
-      page_size: String(Math.max(count * 2, 10)), // 多拿一些，排序后取 top N
+      page_size: String(Math.max(count * 2, 10)),
       order: 'totalrank',
     })
 
     const res = await fetch(`${apiUrl}?${params}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.bilibili.com',
+        'User-Agent': UA,
+        'Referer': 'https://search.bilibili.com',
         'Accept': 'application/json',
+        'Cookie': cookie,
       },
     })
 
@@ -90,9 +110,9 @@ export async function searchBilibiliVideos(
         pubDate: item.pubdate || 0,
       }))
 
-    // 按综合评分排序，取 top N
     videos.sort((a, b) => scoreVideo(b) - scoreVideo(a))
 
+    console.log(`[B站] 搜索 "${keyword}" 返回 ${videos.length} 条视频`)
     return videos.slice(0, count)
   } catch (err) {
     console.error('B站搜索异常:', err)
@@ -100,9 +120,6 @@ export async function searchBilibiliVideos(
   }
 }
 
-/**
- * 去除 HTML 标签
- */
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim()
 }

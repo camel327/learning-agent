@@ -9,6 +9,8 @@ export interface RoadmapSearchResult {
   url: string
 }
 
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+
 /**
  * 搜索多个平台的学习路线
  */
@@ -20,25 +22,29 @@ export async function searchRoadmap(topic: string): Promise<RoadmapSearchResult[
     searchBing(keyword),
   ])
 
-  return results
+  const all = results
     .filter((r): r is PromiseFulfilledResult<RoadmapSearchResult[]> => r.status === 'fulfilled')
     .flatMap(r => r.value)
+
+  console.log(`[Roadmap] 搜索 "${keyword}" 共 ${all.length} 条结果`)
+  return all
 }
 
 /**
- * 知乎搜索
- * 使用知乎搜索 API 获取学习路线相关文章
+ * 知乎搜索 — 抓取网页搜索结果
  */
 async function searchZhihu(keyword: string): Promise<RoadmapSearchResult[]> {
   try {
-    const url = `https://www.zhihu.com/api/v4/search_v3?t=general&q=${encodeURIComponent(keyword)}&correction=1&offset=0&limit=5`
+    const url = `https://www.zhihu.com/search?type=content&q=${encodeURIComponent(keyword)}`
 
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.zhihu.com/search',
-        'Accept': 'application/json',
+        'User-Agent': UA,
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Cookie': '',
       },
+      redirect: 'follow',
     })
 
     if (!res.ok) {
@@ -46,38 +52,56 @@ async function searchZhihu(keyword: string): Promise<RoadmapSearchResult[]> {
       return []
     }
 
-    const data = await res.json()
+    const html = await res.text()
+    const $ = cheerio.load(html)
 
-    if (!data.data || !Array.isArray(data.data)) {
-      return []
+    const results: RoadmapSearchResult[] = []
+
+    // 知乎搜索结果的常见结构
+    $('.SearchResult-Card, .List-item').slice(0, 5).each((_, el) => {
+      const titleEl = $(el).find('h2 a, .ContentItem-title a').first()
+      const title = titleEl.text().trim()
+      const href = titleEl.attr('href') || ''
+      const snippet = $(el).find('.RichContent-inner, .content, p').first().text().trim().slice(0, 200)
+
+      if (title && snippet) {
+        const fullUrl = href.startsWith('http') ? href : `https://www.zhihu.com${href}`
+        results.push({
+          title,
+          snippet,
+          source: '知乎',
+          url: fullUrl,
+        })
+      }
+    })
+
+    // 如果网页抓取没结果，尝试用搜索引擎搜知乎内容
+    if (results.length === 0) {
+      return await searchViaBing(`site:zhihu.com ${keyword}`)
     }
 
-    return data.data
-      .filter((item: any) => item.type === 'search_result' && item.object)
-      .map((item: any) => ({
-        title: stripHtml(item.object.title || item.highlight?.title || ''),
-        snippet: stripHtml(item.object.excerpt || item.highlight?.content || ''),
-        source: '知乎',
-        url: item.object.url ? `https://www.zhihu.com/question/${item.object.id}` : '',
-      }))
-      .filter((item: RoadmapSearchResult) => item.title && item.snippet)
+    return results
   } catch (err) {
     console.error('知乎搜索异常:', err)
-    return []
+    // fallback: 用必应搜知乎内容
+    return await searchViaBing(`site:zhihu.com ${keyword}`)
   }
 }
 
 /**
  * 必应搜索（国内版）
- * 抓取搜索结果页面
  */
 async function searchBing(keyword: string): Promise<RoadmapSearchResult[]> {
+  return searchViaBing(keyword)
+}
+
+async function searchViaBing(keyword: string): Promise<RoadmapSearchResult[]> {
   try {
     const url = `https://cn.bing.com/search?q=${encodeURIComponent(keyword)}`
 
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': UA,
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'zh-CN,zh;q=0.9',
       },
@@ -115,9 +139,6 @@ async function searchBing(keyword: string): Promise<RoadmapSearchResult[]> {
   }
 }
 
-/**
- * 去除 HTML 标签
- */
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim()
 }
