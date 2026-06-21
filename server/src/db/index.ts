@@ -68,3 +68,66 @@ export function setConfigValue(key: string, value: string) {
 export function deleteConfigValue(key: string) {
   getDb().prepare('DELETE FROM config WHERE key = ?').run(key)
 }
+
+// ---- Conversation 存取 ----
+
+export interface Conversation {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+}
+
+export interface StoredMessage {
+  id: number
+  conversation_id: string
+  role: string
+  content: string
+  created_at: string
+}
+
+export function createConversation(id: string, title: string) {
+  getDb().prepare(
+    'INSERT INTO conversations (id, title) VALUES (?, ?)'
+  ).run(id, title)
+}
+
+export function updateConversationTitle(id: string, title: string) {
+  getDb().prepare(
+    'UPDATE conversations SET title = ?, updated_at = datetime(\'now\') WHERE id = ?'
+  ).run(title, id)
+}
+
+export function getConversations(): Conversation[] {
+  return getDb().prepare(
+    'SELECT * FROM conversations ORDER BY updated_at DESC'
+  ).all() as Conversation[]
+}
+
+export function getConversation(id: string): Conversation | undefined {
+  return getDb().prepare(
+    'SELECT * FROM conversations WHERE id = ?'
+  ).get(id) as Conversation | undefined
+}
+
+export function deleteConversation(id: string) {
+  getDb().prepare('DELETE FROM messages WHERE conversation_id = ?').run(id)
+  getDb().prepare('DELETE FROM conversations WHERE id = ?').run(id)
+}
+
+export function saveMessage(conversationId: string, role: string, content: string) {
+  getDb().prepare(
+    'INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)'
+  ).run(conversationId, role, content)
+
+  // 更新对话的 updated_at
+  getDb().prepare(
+    'UPDATE conversations SET updated_at = datetime(\'now\') WHERE id = ?'
+  ).run(conversationId)
+}
+
+export function getMessages(conversationId: string): StoredMessage[] {
+  return getDb().prepare(
+    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY id ASC'
+  ).all(conversationId) as StoredMessage[]
+}

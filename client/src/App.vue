@@ -8,6 +8,10 @@ const isDark = ref(false)
 const showConfig = ref(false)
 const chatViewRef = ref()
 
+function toggleSidebar() {
+  chatViewRef.value?.toggleSidebar()
+}
+
 function toggleDark() {
   isDark.value = !isDark.value
   document.documentElement.classList.toggle('dark', isDark.value)
@@ -22,6 +26,9 @@ function toggleDark() {
           <header class="app-header">
             <h1>📚 学习规划 Agent</h1>
             <div class="header-actions">
+              <n-button quaternary size="small" @click="toggleSidebar">
+                📋 历史
+              </n-button>
               <n-button quaternary size="small" @click="toggleDark">
                 {{ isDark ? '☀️ 亮色' : '🌙 暗色' }}
               </n-button>
