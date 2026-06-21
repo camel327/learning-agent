@@ -30,9 +30,9 @@ export function useChat() {
     // 添加用户消息
     messages.value.push({ role: 'user', content })
 
-    // 添加空的 assistant 消息，流式填充
-    const assistantMsg: Message = { role: 'assistant', content: '' }
-    messages.value.push(assistantMsg)
+    // 添加空的 assistant 消息，通过索引引用确保响应式
+    messages.value.push({ role: 'assistant', content: '' })
+    const assistantIndex = messages.value.length - 1
 
     isStreaming.value = true
     statusText.value = '思考中...'
@@ -58,20 +58,15 @@ export function useChat() {
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let chunkCount = 0
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) {
-          console.log('[Chat] 流结束，共收到', chunkCount, '个 chunk')
+          console.log('[Chat] 流结束')
           break
         }
 
-        chunkCount++
-        const chunk = decoder.decode(value, { stream: true })
-        console.log(`[Chat] chunk ${chunkCount}:`, chunk.slice(0, 200))
-
-        buffer += chunk
+        buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
@@ -87,16 +82,20 @@ export function useChat() {
 
           try {
             const event: StreamEvent = JSON.parse(data)
-            console.log('[Chat] 事件:', event.type, event.content?.slice(0, 50))
+            console.log('[Chat] 事件:', event.type, event.content?.slice(0, 30))
+            // 通过响应式数组访问，确保 Vue 检测到变化
+            const msg = messages.value[assistantIndex]
+            if (!msg) continue
+
             switch (event.type) {
               case 'content':
-                assistantMsg.content += event.content
+                msg.content += event.content
                 break
               case 'status':
                 statusText.value = event.content
                 break
               case 'error':
-                assistantMsg.content += `\n\n❌ 错误：${event.content}`
+                msg.content += `\n\n❌ 错误：${event.content}`
                 break
               case 'conversation_id':
                 conversationId.value = event.content
@@ -108,24 +107,23 @@ export function useChat() {
         }
       }
 
-      // 处理 buffer 中剩余的数据
+      // 处理 buffer 中剩余数据
       if (buffer.trim().startsWith('data: ')) {
         const data = buffer.trim().slice(6)
         if (data !== '[DONE]') {
           try {
             const event: StreamEvent = JSON.parse(data)
-            console.log('[Chat] 剩余事件:', event.type)
             if (event.type === 'content') {
-              assistantMsg.content += event.content
+              messages.value[assistantIndex].content += event.content
             }
           } catch {}
         }
       }
 
-      console.log('[Chat] 最终回复长度:', assistantMsg.content.length)
+      console.log('[Chat] 最终回复长度:', messages.value[assistantIndex]?.content.length)
     } catch (err: any) {
       console.error('[Chat] 异常:', err)
-      assistantMsg.content = `❌ 请求失败：${err.message}`
+      messages.value[assistantIndex].content = `❌ 请求失败：${err.message}`
     } finally {
       isStreaming.value = false
       statusText.value = ''
