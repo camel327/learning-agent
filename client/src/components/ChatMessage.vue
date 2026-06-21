@@ -24,6 +24,7 @@ import { usePlans } from '../composables/usePlans'
 const props = defineProps<{
   message: Message
   conversationId?: string | null
+  isStreaming?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -43,9 +44,10 @@ const renderedContent = computed(() => {
   return md.render(props.message.content || '')
 })
 
-// 判断是否是学习路线（包含阶段/知识点等关键词）
+// 判断是否是学习路线（生成完成后才显示）
 const showSaveButton = computed(() => {
   if (props.message.role !== 'assistant') return false
+  if (props.isStreaming) return false  // 生成中不显示
   const content = props.message.content || ''
   return (
     content.includes('学习路线') ||

@@ -55,7 +55,7 @@ function switchView(view: 'chat' | 'plans') {
                 {{ isDark ? '☀️' : '🌙' }}
               </n-button>
               <n-button v-if="currentView === 'chat'" quaternary size="small" @click="chatViewRef?.clearMessages()">
-                🗑️ 清空
+                ➕ 新对话
               </n-button>
               <n-button quaternary size="small" @click="showConfig = true">
                 ⚙️
