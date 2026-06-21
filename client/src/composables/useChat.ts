@@ -25,6 +25,8 @@ export function useChat() {
   const conversations = ref<Conversation[]>([])
 
   async function sendMessage(content: string) {
+    console.log('[Chat] 发送消息:', content)
+
     // 添加用户消息
     messages.value.push({ role: 'user', content })
 
@@ -36,6 +38,7 @@ export function useChat() {
     statusText.value = '思考中...'
 
     try {
+      console.log('[Chat] 请求 /api/chat...')
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,6 +48,8 @@ export function useChat() {
         }),
       })
 
+      console.log('[Chat] 响应状态:', response.status)
+
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
         throw new Error(err.error || `HTTP ${response.status}`)
@@ -53,24 +58,36 @@ export function useChat() {
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let chunkCount = 0
 
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          console.log('[Chat] 流结束，共收到', chunkCount, '个 chunk')
+          break
+        }
 
-        buffer += decoder.decode(value, { stream: true })
+        chunkCount++
+        const chunk = decoder.decode(value, { stream: true })
+        console.log(`[Chat] chunk ${chunkCount}:`, chunk.slice(0, 200))
+
+        buffer += chunk
         const lines = buffer.split('\n')
-        buffer = lines.pop() || ''  // 最后一行可能不完整，留到下次处理
+        buffer = lines.pop() || ''
 
         for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed.startsWith('data: ')) continue
 
           const data = trimmed.slice(6)
-          if (data === '[DONE]') break
+          if (data === '[DONE]') {
+            console.log('[Chat] 收到 [DONE]')
+            break
+          }
 
           try {
             const event: StreamEvent = JSON.parse(data)
+            console.log('[Chat] 事件:', event.type, event.content?.slice(0, 50))
             switch (event.type) {
               case 'content':
                 assistantMsg.content += event.content
@@ -85,8 +102,8 @@ export function useChat() {
                 conversationId.value = event.content
                 break
             }
-          } catch {
-            // 忽略解析错误
+          } catch (e) {
+            console.warn('[Chat] 解析失败:', data)
           }
         }
       }
@@ -97,13 +114,17 @@ export function useChat() {
         if (data !== '[DONE]') {
           try {
             const event: StreamEvent = JSON.parse(data)
+            console.log('[Chat] 剩余事件:', event.type)
             if (event.type === 'content') {
               assistantMsg.content += event.content
             }
           } catch {}
         }
       }
+
+      console.log('[Chat] 最终回复长度:', assistantMsg.content.length)
     } catch (err: any) {
+      console.error('[Chat] 异常:', err)
       assistantMsg.content = `❌ 请求失败：${err.message}`
     } finally {
       isStreaming.value = false
