@@ -2,31 +2,6 @@
 
 ## 📋 待开发
 
-### P1：项目骨架
-- [x] 初始化 Vue 3 + Vite 项目
-- [x] 初始化 Express + TypeScript 项目
-- [x] 前端：聊天界面骨架 + SSE 流式接收
-- [x] 后端：聊天接口 + SSE 流式返回
-- [x] Vite 代理配置（开发环境转发 /api 到后端）
-
-### P2：LLM 适配层
-- [x] LLM 适配器（统一 OpenAI 格式请求）
-- [x] 配置管理接口（加密存储 API Key）
-- [x] 前端配置弹窗（选择提供商、填 Key、测试连通）
-- [x] 支持 DeepSeek / OpenAI / 通义千问
-
-### P3：爬虫模块
-- [ ] 阶段 1：知乎搜索学习路线
-- [ ] 阶段 1：必应搜索学习路线
-- [ ] 阶段 2：B站视频搜索（API 方式）
-- [ ] 阶段 2：视频评分排序（播放量 0.5 + 弹幕 0.3 + 评论 0.2）
-
-### P4：Agent 编排
-- [ ] 工具定义（search_roadmap / search_videos）
-- [ ] Agent 主循环（支持多轮工具调用）
-- [ ] System Prompt 设计
-- [ ] 前端状态展示（搜索中、整理中、生成中）
-
 ### P5：UI 完善
 - [ ] 学习路线时间线可视化
 - [ ] 视频推荐卡片（封面 + 标题 + 播放量）
@@ -59,3 +34,16 @@
 - [x] /api/config CRUD + /api/config/test 连通测试
 - [x] /api/chat 接入真实 LLM 流式调用
 - [x] 前端 ApiConfig 配置弹窗 + useConfig composable
+
+### P3：爬虫模块（PR #5）
+- [x] 阶段 1：知乎 + 必应搜索学习路线
+- [x] 阶段 2：B站视频搜索（API 方式）
+- [x] 视频评分排序（播放量 0.5 + 弹幕 0.3 + 评论 0.2）
+- [x] 工具定义 + 执行器（search_roadmap / search_videos）
+
+### P4：Agent 编排
+- [x] 工具定义（search_roadmap / search_videos）
+- [x] Agent 主循环（支持多轮工具调用）
+- [x] System Prompt 设计
+- [x] /api/chat 接入 Agent 编排
+- [x] 前端状态展示（搜索中、整理中）
