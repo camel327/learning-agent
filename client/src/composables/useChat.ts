@@ -52,16 +52,21 @@ export function useChat() {
 
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const text = decoder.decode(value)
-        const lines = text.split('\n').filter(line => line.startsWith('data: '))
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''  // 保留不完整的最后一行
 
         for (const line of lines) {
-          const data = line.slice(6)
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data: ')) continue
+
+          const data = trimmed.slice(6)
           if (data === '[DONE]') break
 
           try {
