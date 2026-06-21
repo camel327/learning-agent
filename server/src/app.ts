@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import { chatRouter } from './routes/chat.js'
 import { configRouter } from './routes/config.js'
+import { plansRouter } from './routes/plans.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -18,6 +19,7 @@ app.use((req, _res, next) => {
 // 路由
 app.use('/api/chat', chatRouter)
 app.use('/api/config', configRouter)
+app.use('/api/plans', plansRouter)
 
 // 健康检查
 app.get('/api/health', (_req, res) => {

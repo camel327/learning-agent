@@ -48,6 +48,14 @@ function initTables(db: Database.Database) {
       value TEXT NOT NULL,
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS learning_plans (
+      id TEXT PRIMARY KEY,
+      topic TEXT NOT NULL,
+      content TEXT NOT NULL,
+      conversation_id TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `)
 }
 
@@ -130,4 +138,36 @@ export function getMessages(conversationId: string): StoredMessage[] {
   return getDb().prepare(
     'SELECT * FROM messages WHERE conversation_id = ? ORDER BY id ASC'
   ).all(conversationId) as StoredMessage[]
+}
+
+// ---- Learning Plans 存取 ----
+
+export interface LearningPlan {
+  id: string
+  topic: string
+  content: string
+  conversation_id: string | null
+  created_at: string
+}
+
+export function savePlan(id: string, topic: string, content: string, conversationId?: string) {
+  getDb().prepare(
+    'INSERT INTO learning_plans (id, topic, content, conversation_id) VALUES (?, ?, ?, ?)'
+  ).run(id, topic, content, conversationId || null)
+}
+
+export function getPlans(): LearningPlan[] {
+  return getDb().prepare(
+    'SELECT * FROM learning_plans ORDER BY created_at DESC'
+  ).all() as LearningPlan[]
+}
+
+export function getPlan(id: string): LearningPlan | undefined {
+  return getDb().prepare(
+    'SELECT * FROM learning_plans WHERE id = ?'
+  ).get(id) as LearningPlan | undefined
+}
+
+export function deletePlan(id: string) {
+  getDb().prepare('DELETE FROM learning_plans WHERE id = ?').run(id)
 }

@@ -2,11 +2,13 @@
 import { NConfigProvider, NMessageProvider, NDialogProvider, darkTheme } from 'naive-ui'
 import { ref } from 'vue'
 import ChatView from './views/ChatView.vue'
+import PlansView from './views/PlansView.vue'
 import ApiConfig from './components/ApiConfig.vue'
 
 const isDark = ref(false)
 const showConfig = ref(false)
 const chatViewRef = ref()
+const currentView = ref<'chat' | 'plans'>('chat')
 
 function toggleSidebar() {
   chatViewRef.value?.toggleSidebar()
@@ -15,6 +17,10 @@ function toggleSidebar() {
 function toggleDark() {
   isDark.value = !isDark.value
   document.documentElement.classList.toggle('dark', isDark.value)
+}
+
+function switchView(view: 'chat' | 'plans') {
+  currentView.value = view
 }
 </script>
 
@@ -26,22 +32,39 @@ function toggleDark() {
           <header class="app-header">
             <h1>📚 学习规划 Agent</h1>
             <div class="header-actions">
-              <n-button quaternary size="small" @click="toggleSidebar">
+              <n-button
+                quaternary
+                size="small"
+                :type="currentView === 'chat' ? 'primary' : 'default'"
+                @click="switchView('chat')"
+              >
+                💬 对话
+              </n-button>
+              <n-button
+                quaternary
+                size="small"
+                :type="currentView === 'plans' ? 'primary' : 'default'"
+                @click="switchView('plans')"
+              >
+                📚 路线库
+              </n-button>
+              <n-button v-if="currentView === 'chat'" quaternary size="small" @click="toggleSidebar">
                 📋 历史
               </n-button>
               <n-button quaternary size="small" @click="toggleDark">
-                {{ isDark ? '☀️ 亮色' : '🌙 暗色' }}
+                {{ isDark ? '☀️' : '🌙' }}
               </n-button>
-              <n-button quaternary size="small" @click="chatViewRef?.clearMessages()">
+              <n-button v-if="currentView === 'chat'" quaternary size="small" @click="chatViewRef?.clearMessages()">
                 🗑️ 清空
               </n-button>
               <n-button quaternary size="small" @click="showConfig = true">
-                ⚙️ 模型配置
+                ⚙️
               </n-button>
             </div>
           </header>
           <main class="app-main">
-            <ChatView ref="chatViewRef" />
+            <ChatView v-if="currentView === 'chat'" ref="chatViewRef" />
+            <PlansView v-else />
           </main>
           <ApiConfig v-model:show="showConfig" />
         </div>
