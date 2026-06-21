@@ -60,7 +60,7 @@ export function useChat() {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        buffer = lines.pop() || ''  // 保留不完整的最后一行
+        buffer = lines.pop() || ''  // 最后一行可能不完整，留到下次处理
 
         for (const line of lines) {
           const trimmed = line.trim()
@@ -88,6 +88,19 @@ export function useChat() {
           } catch {
             // 忽略解析错误
           }
+        }
+      }
+
+      // 处理 buffer 中剩余的数据
+      if (buffer.trim().startsWith('data: ')) {
+        const data = buffer.trim().slice(6)
+        if (data !== '[DONE]') {
+          try {
+            const event: StreamEvent = JSON.parse(data)
+            if (event.type === 'content') {
+              assistantMsg.content += event.content
+            }
+          } catch {}
         }
       }
     } catch (err: any) {
