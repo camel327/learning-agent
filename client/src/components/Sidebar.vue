@@ -7,19 +7,10 @@
     <nav class="nav-section">
       <div
         class="nav-item"
-        :class="{ active: currentView === 'chat' }"
         @click="$emit('newChat')"
       >
         <span class="nav-icon">➕</span>
         <span>新对话</span>
-      </div>
-      <div
-        class="nav-item"
-        :class="{ active: currentView === 'chat' }"
-        @click="$emit('switchView', 'chat')"
-      >
-        <span class="nav-icon">💬</span>
-        <span>对话</span>
       </div>
       <div
         class="nav-item"

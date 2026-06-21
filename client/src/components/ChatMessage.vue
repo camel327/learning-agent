@@ -5,12 +5,12 @@
     </div>
     <div class="bubble" :class="[message.role]">
       <div class="content markdown-body" v-html="renderedContent" />
-      <div v-if="showSaveButton && !saved" class="actions">
+      <div v-if="showSaveButton && !isSaved" class="actions">
         <n-button size="tiny" quaternary :loading="saving" @click="handleSave">
           💾 保存路线
         </n-button>
       </div>
-      <div v-if="saved" class="saved-badge">✅ 已保存</div>
+      <div v-if="isSaved" class="saved-badge">✅ 已保存</div>
     </div>
   </div>
 </template>
@@ -26,6 +26,7 @@ const props = defineProps<{
   message: Message
   conversationId?: string | null
   isStreaming?: boolean
+  alreadySaved?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +37,9 @@ const message = useMessage()
 const { savePlan } = usePlans()
 const saving = ref(false)
 const saved = ref(false)
+
+// 合并：外部传入的已保存状态 + 本地保存后的状态
+const isSaved = computed(() => props.alreadySaved || saved.value)
 
 const md = new MarkdownIt({
   linkify: true,
