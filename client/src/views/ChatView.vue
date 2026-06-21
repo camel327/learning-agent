@@ -28,7 +28,7 @@
 
       <!-- 消息列表 -->
       <template v-for="(msg, i) in messages" :key="i">
-        <ChatMessage :message="msg" :conversationId="conversationId" />
+        <ChatMessage :message="msg" :conversationId="conversationId" :isStreaming="isStreaming" />
       </template>
 
       <!-- 状态提示 -->
