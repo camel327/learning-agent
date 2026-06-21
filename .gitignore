@@ -17,3 +17,5 @@ npm-debug.log*
 # SQLite
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
