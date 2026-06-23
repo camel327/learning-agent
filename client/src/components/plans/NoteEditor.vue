@@ -3,18 +3,18 @@
     <div class="note-header">
       <span class="note-title">📝 {{ title }} 笔记</span>
       <div class="note-actions">
+        <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
         <button
           v-if="!editing"
           class="action-btn edit-btn"
           @click="startEdit"
           title="编辑"
         >
-          ✏️ 编辑
+          ✏️
         </button>
-        <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
         <button v-if="editing" class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
-        <button class="action-btn fs-btn" @click.stop="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-          {{ isFullscreen ? '✕全屏' : '⬜全屏' }}
+        <button class="action-btn fs-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+          {{ isFullscreen ? '✕' : '⬜' }}
         </button>
         <button class="action-btn close-btn" @click="handleClose" title="收起">✕</button>
       </div>
@@ -60,19 +60,40 @@ let vditorInstance: Vditor | null = null
 
 function toggleFullscreen() {
   if (!containerRef.value) return
-  if (!document.fullscreenElement) {
-    containerRef.value.requestFullscreen().catch(() => {})
+  if (!isFullscreen.value) {
+    // 进入全屏：给 body 添加全屏类
+    document.body.classList.add('note-fullscreen-active')
+    containerRef.value.classList.add('fullscreen')
+    isFullscreen.value = true
+    // 禁止背景滚动
+    document.body.style.overflow = 'hidden'
   } else {
-    document.exitFullscreen()
+    // 退出全屏
+    document.body.classList.remove('note-fullscreen-active')
+    containerRef.value.classList.remove('fullscreen')
+    isFullscreen.value = false
+    document.body.style.overflow = ''
   }
 }
 
-function onFullscreenChange() {
-  isFullscreen.value = !!document.fullscreenElement
+function exitFullscreen() {
+  if (isFullscreen.value) {
+    document.body.classList.remove('note-fullscreen-active')
+    containerRef.value?.classList.remove('fullscreen')
+    isFullscreen.value = false
+    document.body.style.overflow = ''
+  }
+}
+
+// ESC 退出全屏
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    exitFullscreen()
+  }
 }
 
 onMounted(() => {
-  document.addEventListener('fullscreenchange', onFullscreenChange)
+  document.addEventListener('keydown', onKeydown)
   if (editing.value) {
     initVditor()
   }
@@ -122,14 +143,13 @@ watch(() => props.isDark, (dark) => {
 })
 
 function handleClose() {
-  if (isFullscreen.value && document.fullscreenElement) {
-    document.exitFullscreen()
-  }
+  exitFullscreen()
   emit('close')
 }
 
 onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', onFullscreenChange)
+  document.removeEventListener('keydown', onKeydown)
+  exitFullscreen()
   if (vditorInstance) {
     vditorInstance.destroy()
     vditorInstance = null
@@ -151,35 +171,35 @@ onBeforeUnmount(() => {
   background: #1a1a1a;
 }
 
-/* 全屏样式 */
-.note-editor:fullscreen,
+/* 全屏样式：固定定位覆盖整个视口 */
 .note-editor.fullscreen {
-  border-radius: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-  width: 100vw;
-  height: 100vh;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  padding: 0;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: auto !important;
 }
 
-.note-editor:fullscreen .preview-body,
 .note-editor.fullscreen .preview-body {
   flex: 1;
   max-height: none;
   overflow-y: auto;
 }
 
-.note-editor:fullscreen .editor-container,
 .note-editor.fullscreen .editor-container {
   flex: 1;
   min-height: 0;
 }
 
-.note-editor:fullscreen :deep(.vditor),
 .note-editor.fullscreen :deep(.vditor) {
   height: 100% !important;
   flex: 1;
@@ -187,7 +207,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.note-editor:fullscreen :deep(.vditor-content),
 .note-editor.fullscreen :deep(.vditor-content) {
   flex: 1;
   min-height: 0;
@@ -255,10 +274,6 @@ onBeforeUnmount(() => {
 .save-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.fs-btn {
-  font-size: 15px;
 }
 
 /* 预览区域 */
