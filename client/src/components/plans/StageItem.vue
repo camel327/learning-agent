@@ -23,6 +23,9 @@
       </div>
     </div>
 
+    <!-- 阶段笔记插槽（在知识点列表上方） -->
+    <slot />
+
     <div v-show="expanded" class="stage-items">
       <KnowledgeItem
         v-for="item in stage.items"
@@ -32,6 +35,8 @@
         @toggle="$emit('toggleItem', $event)"
         @toggleNote="$emit('toggleNote', $event)"
       />
+      <!-- 知识点笔记插槽 -->
+      <slot name="item-notes" />
     </div>
   </div>
 </template>

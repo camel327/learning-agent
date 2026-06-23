@@ -16,40 +16,17 @@
           @toggleStage="$emit('toggleStage', $event)"
           @toggleItem="$emit('toggleItem', $event)"
           @toggleNote="handleToggleNote"
-        />
-        <!-- 阶段笔记展开区 -->
-        <div v-if="openNoteId === stage.id" class="note-area">
-          <NoteEditor
-            :title="stage.title"
-            :modelValue="noteContent"
-            :dirty="noteDirty"
-            :isDark="isDark"
-            @update:modelValue="$emit('updateNote', $event)"
-            @save="$emit('saveNote', stage.id, true)"
-            @close="handleClose"
-            @toggleAi="toggleAiChat()"
-          />
-          <NoteAiChat
-            v-if="showAiChat"
-            :topic="plan.topic"
-            :stageTitle="stage.title"
-            :currentNote="noteContent"
-            :planId="plan.id"
-            :stageId="stage.id"
-            @close="showAiChat = false"
-            @apply="handleApply"
-          />
-        </div>
-        <!-- 知识点笔记展开区 -->
-        <div v-for="item in stage.items" :key="'note-' + item.id">
-          <div v-if="openNoteId === item.id" class="note-area item-note">
+        >
+          <!-- 阶段笔记（在知识点上方） -->
+          <div v-if="openNoteId === stage.id" class="note-area">
             <NoteEditor
-              :title="item.title"
+              :title="stage.title"
               :modelValue="noteContent"
               :dirty="noteDirty"
               :isDark="isDark"
+              :hasExistingNote="!!stage.note"
               @update:modelValue="$emit('updateNote', $event)"
-              @save="$emit('saveNote', item.id, false)"
+              @save="$emit('saveNote', stage.id, true)"
               @close="handleClose"
               @toggleAi="toggleAiChat()"
             />
@@ -57,16 +34,45 @@
               v-if="showAiChat"
               :topic="plan.topic"
               :stageTitle="stage.title"
-              :itemTitle="item.title"
               :currentNote="noteContent"
               :planId="plan.id"
               :stageId="stage.id"
-              :itemId="item.id"
               @close="showAiChat = false"
               @apply="handleApply"
             />
           </div>
-        </div>
+
+          <!-- 知识点笔记 -->
+          <template #item-notes>
+            <div v-for="item in stage.items" :key="'note-' + item.id">
+              <div v-if="openNoteId === item.id" class="note-area item-note">
+                <NoteEditor
+                  :title="item.title"
+                  :modelValue="noteContent"
+                  :dirty="noteDirty"
+                  :isDark="isDark"
+                  :hasExistingNote="!!item.note"
+                  @update:modelValue="$emit('updateNote', $event)"
+                  @save="$emit('saveNote', item.id, false)"
+                  @close="handleClose"
+                  @toggleAi="toggleAiChat()"
+                />
+                <NoteAiChat
+                  v-if="showAiChat"
+                  :topic="plan.topic"
+                  :stageTitle="stage.title"
+                  :itemTitle="item.title"
+                  :currentNote="noteContent"
+                  :planId="plan.id"
+                  :stageId="stage.id"
+                  :itemId="item.id"
+                  @close="showAiChat = false"
+                  @apply="handleApply"
+                />
+              </div>
+            </div>
+          </template>
+        </StageItem>
       </div>
     </div>
 
@@ -137,12 +143,9 @@ const pendingClose = ref<(() => void) | null>(null)
 
 function handleToggleNote(nodeId: string) {
   if (props.openNoteId === nodeId) {
-    // 点击已展开的笔记 → 收起
     handleClose()
   } else {
-    // 打开新笔记
     if (props.noteDirty) {
-      // 有未保存修改，弹窗
       pendingClose.value = () => doOpenNote(nodeId)
       showSaveDialog.value = true
     } else {
@@ -152,7 +155,6 @@ function handleToggleNote(nodeId: string) {
 }
 
 function doOpenNote(nodeId: string) {
-  // 找到对应节点的笔记
   let note = ''
   for (const stage of props.plan.stages) {
     if (stage.id === nodeId) {
@@ -181,7 +183,6 @@ function handleClose() {
 }
 
 function confirmSave() {
-  // 保存后关闭
   if (props.openNoteId) {
     let isStage = false
     for (const stage of props.plan.stages) {
@@ -273,7 +274,7 @@ function handleApply(content: string) {
 }
 
 .item-note {
-  padding-left: 64px;
+  padding-left: 32px;
 }
 
 @keyframes slideDown {
@@ -310,7 +311,6 @@ function handleApply(content: string) {
   overflow-y: auto;
 }
 
-/* 未保存弹窗 */
 .save-dialog-mask {
   position: fixed;
   inset: 0;
