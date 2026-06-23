@@ -73,11 +73,13 @@ function initVditor() {
       'emoji', 'bold', 'italic', 'strike', '|',
       'line', 'quote', 'list', 'ordered-list', '|',
       'code', 'inline-code', 'table', '|',
-      'undo', 'redo'
+      'undo', 'redo', '|',
+      'fullscreen', 'edit-mode'
     ],
     toolbarConfig: { hide: false },
     outline: { enable: false, position: 'right' },
     cache: { enable: false },
+    resize: { enable: true, position: 'bottom' },
     height: 280,
     minHeight: 200,
     input: (value: string) => {
