@@ -3,43 +3,19 @@
     <div class="note-header">
       <span class="note-title">📝 {{ title }} 笔记</span>
       <div class="note-actions">
-        <button
-          class="action-btn mode-btn"
-          :class="{ active: editMode }"
-          @click="editMode = !editMode"
-          :title="editMode ? '切换预览' : '切换编辑'"
-        >
-          {{ editMode ? '👁 预览' : '✏️ 编辑' }}
-        </button>
         <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
         <button class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
         <button class="action-btn close-btn" @click="$emit('close')" title="收起">✕</button>
       </div>
     </div>
-    <div class="editor-body">
-      <!-- 编辑模式：textarea -->
-      <textarea
-        v-if="editMode"
-        ref="textareaRef"
-        class="md-textarea"
-        :value="modelValue"
-        @input="onInput"
-        @keydown.tab.prevent="insertTab"
-        placeholder="输入 Markdown 内容..."
-      />
-      <!-- 预览模式：渲染后的 HTML -->
-      <div
-        v-else
-        class="md-preview markdown-body"
-        v-html="renderedContent"
-      />
-    </div>
+    <div ref="editorRef" class="editor-container" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
-import MarkdownIt from 'markdown-it'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import Vditor from 'vditor'
+import 'vditor/dist/index.css'
 
 const props = defineProps<{
   title: string
@@ -55,29 +31,52 @@ const emit = defineEmits<{
   toggleAi: []
 }>()
 
-const md = new MarkdownIt({ linkify: true, breaks: true })
-const editMode = ref(true)
-const textareaRef = ref<HTMLTextAreaElement>()
+const editorRef = ref<HTMLElement>()
+let vditorInstance: Vditor | null = null
 
-const renderedContent = computed(() => md.render(props.modelValue || ''))
+onMounted(() => {
+  if (!editorRef.value) return
 
-function onInput(e: Event) {
-  const target = e.target as HTMLTextAreaElement
-  emit('update:modelValue', target.value)
-}
-
-function insertTab(_e: KeyboardEvent) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const value = textarea.value
-  const newValue = value.substring(0, start) + '  ' + value.substring(end)
-  emit('update:modelValue', newValue)
-  nextTick(() => {
-    textarea.selectionStart = textarea.selectionEnd = start + 2
+  vditorInstance = new Vditor(editorRef.value, {
+    mode: 'ir',
+    value: props.modelValue,
+    theme: props.isDark ? 'dark' : 'classic',
+    toolbar: [
+      'emoji', 'bold', 'italic', 'strike', '|',
+      'line', 'quote', 'list', 'ordered-list', '|',
+      'code', 'inline-code', 'table', '|',
+      'undo', 'redo', '|',
+      'fullscreen', 'edit-mode'
+    ],
+    toolbarConfig: { hide: false },
+    outline: { enable: false, position: 'right' },
+    cache: { enable: false },
+    height: 280,
+    minHeight: 200,
+    input: (value: string) => {
+      emit('update:modelValue', value)
+    }
   })
-}
+})
+
+watch(() => props.modelValue, (val) => {
+  if (vditorInstance && val !== vditorInstance.getValue()) {
+    vditorInstance.setValue(val)
+  }
+})
+
+watch(() => props.isDark, (dark) => {
+  if (vditorInstance) {
+    vditorInstance.setTheme(dark ? 'dark' : 'classic')
+  }
+})
+
+onBeforeUnmount(() => {
+  if (vditorInstance) {
+    vditorInstance.destroy()
+    vditorInstance = null
+  }
+})
 </script>
 
 <style scoped>
@@ -147,125 +146,41 @@ function insertTab(_e: KeyboardEvent) {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.mode-btn.active {
-  background: rgba(24, 160, 88, 0.15);
-  color: #18a058;
-}
-
 .save-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.editor-body {
+.editor-container {
   min-height: 200px;
-  max-height: 400px;
 }
 
-.md-textarea {
-  width: 100%;
-  min-height: 200px;
-  max-height: 400px;
-  padding: 16px;
-  border: none;
-  outline: none;
-  resize: vertical;
-  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
-  font-size: 14px;
-  line-height: 1.7;
-  background: #fff;
-  color: #333;
-  box-sizing: border-box;
+/* vditor 暗色适配 */
+.dark :deep(.vditor) {
+  border: none !important;
+  background: #1a1a1a !important;
 }
 
-.dark .md-textarea {
-  background: #1a1a1a;
-  color: #e0e0e0;
+.dark :deep(.vditor-toolbar) {
+  background: #222 !important;
+  border-bottom-color: #333 !important;
 }
 
-.md-preview {
-  padding: 16px;
-  overflow-y: auto;
-  max-height: 400px;
-  line-height: 1.7;
-  font-size: 14px;
+.dark :deep(.vditor-toolbar__item) {
+  color: #ccc !important;
 }
 
-/* Markdown 渲染样式 */
-.md-preview :deep(h1),
-.md-preview :deep(h2),
-.md-preview :deep(h3) {
-  margin: 16px 0 8px;
-  font-weight: 600;
+.dark :deep(.vditor-ir) {
+  background: #1a1a1a !important;
+  color: #e0e0e0 !important;
 }
 
-.md-preview :deep(h2) {
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+.dark :deep(.vditor-ir pre.vditor-ir__marker--pre) {
+  background: #2a2a2a !important;
 }
 
-.dark .md-preview :deep(h2) {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
-}
-
-.md-preview :deep(ul),
-.md-preview :deep(ol) {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-
-.md-preview :deep(li) {
-  margin: 4px 0;
-}
-
-.md-preview :deep(code) {
-  background: rgba(0, 0, 0, 0.06);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.dark .md-preview :deep(code) {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.md-preview :deep(pre) {
-  background: rgba(0, 0, 0, 0.06);
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-}
-
-.dark .md-preview :deep(pre) {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.md-preview :deep(pre code) {
-  background: none;
-  padding: 0;
-}
-
-.md-preview :deep(a) {
-  color: #18a058;
-  text-decoration: none;
-}
-
-.md-preview :deep(a:hover) {
-  text-decoration: underline;
-}
-
-.md-preview :deep(blockquote) {
-  border-left: 3px solid #18a058;
-  padding-left: 12px;
-  margin: 8px 0;
-  color: #666;
-}
-
-.dark .md-preview :deep(blockquote) {
-  color: #999;
-}
-
-.md-preview :deep(strong) {
-  font-weight: 600;
+.dark :deep(.vditor-ir code) {
+  background: #2a2a2a !important;
+  color: #e0e0e0 !important;
 }
 </style>
