@@ -103,7 +103,7 @@ function closeFixed() {
 }
 
 function updatePosition() {
-  if (!triggerRef.value) return
+  if (!triggerRef.value || !popupRef.value) return
 
   // 找到最近的行容器（stage-header 或 item-row）
   const row = triggerRef.value.closest('.stage-header, .item-row')
@@ -113,21 +113,53 @@ function updatePosition() {
 
   const popupWidth = 320
   const gap = 6
+  const padding = 8
 
-  // 浮窗在元素正上方
+  // 获取浮窗实际高度
+  const popupHeight = popupRef.value.offsetHeight
+
+  // 水平居中
   let left = rect.left + rect.width / 2 - popupWidth / 2
-  let top = rect.top - gap // 先用 top，后面根据浮窗高度调整
+  if (left < padding) left = padding
+  if (left + popupWidth > window.innerWidth - padding) left = window.innerWidth - popupWidth - padding
 
-  // 边界检测（水平）
-  if (left < 8) left = 8
-  if (left + popupWidth > window.innerWidth - 8) left = window.innerWidth - popupWidth - 8
+  // 垂直方向：优先上方，空间不够则放下方
+  const spaceAbove = rect.top - padding
+  const spaceBelow = window.innerHeight - rect.bottom - padding
+
+  let top: number
+  let transform: string
+  let maxHeight: number
+
+  if (spaceAbove >= popupHeight + gap) {
+    // 上方空间足够 → 显示在上方
+    top = rect.top - gap
+    transform = 'translateY(-100%)'
+    maxHeight = spaceAbove - gap
+  } else if (spaceBelow >= popupHeight + gap) {
+    // 下方空间足够 → 显示在下方
+    top = rect.bottom + gap
+    transform = 'none'
+    maxHeight = spaceBelow - gap
+  } else if (spaceAbove >= spaceBelow) {
+    // 都不够，上方更大 → 上方并限制高度
+    top = rect.top - gap
+    transform = 'translateY(-100%)'
+    maxHeight = spaceAbove - gap
+  } else {
+    // 下方更大 → 下方并限制高度
+    top = rect.bottom + gap
+    transform = 'none'
+    maxHeight = spaceBelow - gap
+  }
 
   popupStyle.value = {
     position: 'fixed',
     left: `${left}px`,
     top: `${top}px`,
     zIndex: '9999',
-    transform: 'translateY(-100%)' // 向上偏移整个浮窗高度
+    transform,
+    maxHeight: `${Math.max(maxHeight, 120)}px`
   }
 }
 
@@ -181,6 +213,8 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   animation: fadeIn 0.15s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .dark .video-popup {
@@ -234,8 +268,9 @@ onBeforeUnmount(() => {
 }
 
 .popup-list {
-  max-height: 240px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .video-link {
