@@ -1,6 +1,7 @@
 <template>
   <div
     class="video-popup-trigger"
+    ref="triggerRef"
     @mouseenter="onHover(true)"
     @mouseleave="onHover(false)"
   >
@@ -59,6 +60,7 @@ const props = defineProps<{
 const showPopup = ref(false)
 const isHovering = ref(false)
 const isFixed = ref(false)
+const triggerRef = ref<HTMLElement>()
 const popupRef = ref<HTMLElement>()
 const popupStyle = ref<Record<string, string>>({})
 
@@ -101,35 +103,37 @@ function closeFixed() {
 }
 
 function updatePosition() {
-  if (!popupRef.value) return
-  const trigger = popupRef.value.parentElement
-  if (!trigger) return
+  if (!triggerRef.value) return
 
-  const rect = trigger.getBoundingClientRect()
+  // 找到最近的行容器（stage-header 或 item-row）
+  const row = triggerRef.value.closest('.stage-header, .item-row')
+  const rect = row
+    ? row.getBoundingClientRect()
+    : triggerRef.value.getBoundingClientRect()
+
   const popupWidth = 320
-  const popupHeight = 200
+  const gap = 6
 
+  // 浮窗在元素正上方
   let left = rect.left + rect.width / 2 - popupWidth / 2
-  let top = rect.bottom + 8
+  let top = rect.top - gap // 先用 top，后面根据浮窗高度调整
 
-  // 边界检测
+  // 边界检测（水平）
   if (left < 8) left = 8
   if (left + popupWidth > window.innerWidth - 8) left = window.innerWidth - popupWidth - 8
-  if (top + popupHeight > window.innerHeight - 8) {
-    top = rect.top - popupHeight - 8
-  }
 
   popupStyle.value = {
     position: 'fixed',
     left: `${left}px`,
     top: `${top}px`,
-    zIndex: '9999'
+    zIndex: '9999',
+    transform: 'translateY(-100%)' // 向上偏移整个浮窗高度
   }
 }
 
 // 点击外部关闭
 function handleClickOutside(e: MouseEvent) {
-  if (isFixed.value && popupRef.value && !popupRef.value.contains(e.target as Node)) {
+  if (isFixed.value && popupRef.value && !popupRef.value.contains(e.target as Node) && triggerRef.value && !triggerRef.value.contains(e.target as Node)) {
     closeFixed()
   }
 }
@@ -156,12 +160,13 @@ onBeforeUnmount(() => {
 }
 
 .video-dot {
-  font-size: 10px;
+  font-size: 8px;
   color: #4da6ff;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0 2px;
   transition: color 0.15s;
   user-select: none;
+  line-height: 1;
 }
 
 .video-dot:hover {
@@ -185,8 +190,8 @@ onBeforeUnmount(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .popup-header {
@@ -211,10 +216,11 @@ onBeforeUnmount(() => {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   padding: 2px 6px;
   border-radius: 4px;
   color: #999;
+  line-height: 1;
 }
 
 .popup-close:hover {
