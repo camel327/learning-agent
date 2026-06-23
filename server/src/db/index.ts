@@ -56,7 +56,37 @@ function initTables(db: Database.Database) {
       conversation_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS plan_stages (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      completed INTEGER DEFAULT 0,
+      note TEXT DEFAULT '',
+      videos TEXT DEFAULT '[]',
+      FOREIGN KEY (plan_id) REFERENCES learning_plans(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS plan_items (
+      id TEXT PRIMARY KEY,
+      stage_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      completed INTEGER DEFAULT 0,
+      note TEXT DEFAULT '',
+      videos TEXT DEFAULT '[]',
+      FOREIGN KEY (stage_id) REFERENCES plan_stages(id) ON DELETE CASCADE
+    );
   `)
+
+  // 迁移：为已有表添加 videos 列（如果不存在）
+  try {
+    db.exec(`ALTER TABLE plan_stages ADD COLUMN videos TEXT DEFAULT '[]'`)
+  } catch { /* 列已存在，忽略 */ }
+  try {
+    db.exec(`ALTER TABLE plan_items ADD COLUMN videos TEXT DEFAULT '[]'`)
+  } catch { /* 列已存在，忽略 */ }
 }
 
 // ---- Config 存取 ----
@@ -169,5 +199,130 @@ export function getPlan(id: string): LearningPlan | undefined {
 }
 
 export function deletePlan(id: string) {
+  getDb().prepare('DELETE FROM plan_items WHERE stage_id IN (SELECT id FROM plan_stages WHERE plan_id = ?)').run(id)
+  getDb().prepare('DELETE FROM plan_stages WHERE plan_id = ?').run(id)
   getDb().prepare('DELETE FROM learning_plans WHERE id = ?').run(id)
+}
+
+// ---- Plan Stages & Items 存取 ----
+
+export interface VideoInfo {
+  title: string
+  url: string
+  up: string
+  views: string
+}
+
+export interface PlanStage {
+  id: string
+  plan_id: string
+  title: string
+  sort_order: number
+  completed: number
+  note: string
+  videos: string // JSON string of VideoInfo[]
+}
+
+export interface PlanItem {
+  id: string
+  stage_id: string
+  title: string
+  sort_order: number
+  completed: number
+  note: string
+  videos: string // JSON string of VideoInfo[]
+}
+
+export interface PlanStageWithItems extends Omit<PlanStage, 'videos'> {
+  videos: VideoInfo[]
+  items: (Omit<PlanItem, 'videos'> & { videos: VideoInfo[] })[]
+}
+
+export interface PlanDetail extends LearningPlan {
+  stages: PlanStageWithItems[]
+}
+
+export function savePlanWithStructure(
+  planId: string,
+  topic: string,
+  content: string,
+  stages: { title: string; items: { title: string; videos?: VideoInfo[] }[]; videos?: VideoInfo[] }[],
+  conversationId?: string
+) {
+  const db = getDb()
+  const insertPlan = db.prepare('INSERT INTO learning_plans (id, topic, content, conversation_id) VALUES (?, ?, ?, ?)')
+  const insertStage = db.prepare('INSERT INTO plan_stages (id, plan_id, title, sort_order, videos) VALUES (?, ?, ?, ?, ?)')
+  const insertItem = db.prepare('INSERT INTO plan_items (id, stage_id, title, sort_order, videos) VALUES (?, ?, ?, ?, ?)')
+
+  const transaction = db.transaction(() => {
+    insertPlan.run(planId, topic, content, conversationId || null)
+    stages.forEach((stage, si) => {
+      const stageId = `${planId}-s${si}`
+      insertStage.run(stageId, planId, stage.title, si, JSON.stringify(stage.videos || []))
+      stage.items.forEach((item, ii) => {
+        insertItem.run(`${stageId}-i${ii}`, stageId, item.title, ii, JSON.stringify(item.videos || []))
+      })
+    })
+  })
+
+  transaction()
+}
+
+export function getPlanDetail(planId: string): PlanDetail | undefined {
+  const plan = getDb().prepare('SELECT * FROM learning_plans WHERE id = ?').get(planId) as LearningPlan | undefined
+  if (!plan) return undefined
+
+  const stages = getDb().prepare(
+    'SELECT * FROM plan_stages WHERE plan_id = ? ORDER BY sort_order ASC'
+  ).all(planId) as PlanStage[]
+
+  const stagesWithItems = stages.map(stage => {
+    const items = getDb().prepare(
+      'SELECT * FROM plan_items WHERE stage_id = ? ORDER BY sort_order ASC'
+    ).all(stage.id) as PlanItem[]
+
+    return {
+      ...stage,
+      videos: parseVideosJson(stage.videos),
+      items: items.map(item => ({
+        ...item,
+        videos: parseVideosJson(item.videos)
+      }))
+    }
+  })
+
+  return { ...plan, stages: stagesWithItems }
+}
+
+function parseVideosJson(videos: string | null): VideoInfo[] {
+  if (!videos) return []
+  try {
+    return JSON.parse(videos)
+  } catch {
+    return []
+  }
+}
+
+export function updateStageCompletion(stageId: string, completed: number) {
+  getDb().prepare('UPDATE plan_stages SET completed = ? WHERE id = ?').run(completed, stageId)
+}
+
+export function updateItemCompletion(itemId: string, completed: number) {
+  getDb().prepare('UPDATE plan_items SET completed = ? WHERE id = ?').run(completed, itemId)
+}
+
+export function updateStageNote(stageId: string, note: string) {
+  getDb().prepare('UPDATE plan_stages SET note = ? WHERE id = ?').run(note, stageId)
+}
+
+export function updateItemNote(itemId: string, note: string) {
+  getDb().prepare('UPDATE plan_items SET note = ? WHERE id = ?').run(note, itemId)
+}
+
+export function getStageById(stageId: string): PlanStage | undefined {
+  return getDb().prepare('SELECT * FROM plan_stages WHERE id = ?').get(stageId) as PlanStage | undefined
+}
+
+export function getItemById(itemId: string): PlanItem | undefined {
+  return getDb().prepare('SELECT * FROM plan_items WHERE id = ?').get(itemId) as PlanItem | undefined
 }
