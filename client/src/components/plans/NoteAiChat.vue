@@ -1,8 +1,8 @@
 <template>
   <div class="ai-chat">
     <div class="ai-header">
-      <span>🤖 AI 笔记助手</span>
-      <button class="close-btn" @click="$emit('close')">✕</button>
+      <span><IconSmartToy /> AI 笔记助手</span>
+      <button class="close-btn" @click="$emit('close')"><IconClose /></button>
     </div>
     <div class="ai-messages" ref="messagesRef">
       <div v-if="messages.length === 0" class="ai-hint">
@@ -43,6 +43,8 @@
 
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
+import IconSmartToy from '~icons/ic/baseline-smart-toy'
+import IconClose from '~icons/ic/baseline-close'
 
 const props = defineProps<{
   topic: string

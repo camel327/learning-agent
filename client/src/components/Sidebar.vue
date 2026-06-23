@@ -9,7 +9,7 @@
         class="nav-item"
         @click="$emit('newChat')"
       >
-        <span class="nav-icon">➕</span>
+        <IconAdd class="nav-icon" />
         <span>新对话</span>
       </div>
       <div
@@ -17,7 +17,7 @@
         :class="{ active: currentView === 'plans' }"
         @click="$emit('switchView', 'plans')"
       >
-        <span class="nav-icon">📚</span>
+        <IconLibrary class="nav-icon" />
         <span>路线库</span>
       </div>
     </nav>
@@ -46,7 +46,7 @@
             class="delete-btn"
             @click.stop="$emit('delete', conv.id)"
           >
-            🗑️
+            <IconDelete />
           </n-button>
         </div>
       </div>
@@ -56,6 +56,9 @@
 
 <script setup lang="ts">
 import type { Conversation } from '../composables/useChat'
+import IconAdd from '~icons/ic/baseline-add'
+import IconLibrary from '~icons/ic/baseline-library-books'
+import IconDelete from '~icons/ic/baseline-delete'
 
 defineProps<{
   show: boolean

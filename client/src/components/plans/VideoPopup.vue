@@ -19,8 +19,8 @@
         @mouseleave="onHover(false)"
       >
         <div class="popup-header">
-          <span>🎬 相关视频</span>
-          <button class="popup-close" @click.stop="closeFixed">✕</button>
+          <span><IconMovie /> 相关视频</span>
+          <button class="popup-close" @click.stop="closeFixed"><IconClose /></button>
         </div>
         <div class="popup-list">
           <a
@@ -34,7 +34,7 @@
             <div class="video-title">{{ video.title }}</div>
             <div class="video-meta">
               <span v-if="video.up">UP: {{ video.up }}</span>
-              <span v-if="video.views">▶️ {{ video.views }}</span>
+              <span v-if="video.views"><IconPlay /> {{ video.views }}</span>
             </div>
           </a>
         </div>
@@ -45,6 +45,9 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onBeforeUnmount, watch } from 'vue'
+import IconMovie from '~icons/ic/baseline-ondemand-video'
+import IconClose from '~icons/ic/baseline-close'
+import IconPlay from '~icons/ic/baseline-play-arrow'
 
 interface VideoInfo {
   title: string

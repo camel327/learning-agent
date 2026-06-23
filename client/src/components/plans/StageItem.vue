@@ -1,7 +1,7 @@
 <template>
   <div class="stage-item">
     <div class="stage-header" @click="expanded = !expanded">
-      <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
+      <span class="expand-icon"><component :is="expanded ? IconArrowDown : IconArrowRight" /></span>
       <label class="checkbox-label" @click.stop>
         <input
           type="checkbox"
@@ -18,7 +18,7 @@
           @click.stop="$emit('toggleNote', stage.id)"
           title="阶段笔记"
         >
-          📝
+          <IconNote />
         </button>
       </div>
     </div>
@@ -46,6 +46,9 @@ import { ref, computed } from 'vue'
 import KnowledgeItem from './KnowledgeItem.vue'
 import VideoPopup from './VideoPopup.vue'
 import type { PlanStage, PlanItem } from '../../stores/plans'
+import IconArrowDown from '~icons/ic/baseline-keyboard-arrow-down'
+import IconArrowRight from '~icons/ic/baseline-keyboard-arrow-right'
+import IconNote from '~icons/ic/baseline-edit-note'
 
 const props = defineProps<{
   stage: PlanStage

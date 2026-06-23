@@ -3,7 +3,7 @@
     <div class="messages" ref="messagesRef">
       <!-- 空状态 -->
       <div v-if="chatStore.messages.length === 0" class="empty">
-        <div class="empty-icon">📚</div>
+        <div class="empty-icon"><IconLibrary style="font-size: 48px" /></div>
         <h3>学习规划 Agent</h3>
         <p>告诉我你想学什么技术，我来帮你规划学习路线并推荐视频。</p>
         <div class="examples">
@@ -13,7 +13,7 @@
           </n-button>
         </div>
         <p v-if="!config?.hasApiKey" class="tip">
-          ⚠️ 请先点击右上角「⚙️ 模型配置」填写 API Key
+          <IconWarning /> 请先点击右上角「<IconSettings /> 模型配置」填写 API Key
         </p>
       </div>
 
@@ -40,6 +40,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { NSpin } from 'naive-ui'
+import IconLibrary from '~icons/ic/baseline-library-books'
+import IconWarning from '~icons/ic/baseline-warning'
+import IconSettings from '~icons/ic/baseline-settings'
 import ChatMessage from '../components/ChatMessage.vue'
 import ChatInput from '../components/ChatInput.vue'
 import { useChatStore } from '../stores/chat'

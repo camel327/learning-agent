@@ -1,7 +1,7 @@
 <template>
   <div class="plan-detail">
     <div class="detail-header">
-      <button class="back-btn" @click="$emit('back')">← 返回列表</button>
+      <button class="back-btn" @click="$emit('back')"><IconArrowBack /> 返回列表</button>
       <h2 class="plan-topic">{{ plan.topic }}</h2>
       <div class="plan-progress">
         进度 {{ progress.completed }}/{{ progress.total }}
@@ -85,7 +85,7 @@
     <!-- 未保存提醒弹窗 -->
     <div v-if="showSaveDialog" class="save-dialog-mask">
       <div class="save-dialog">
-        <p>⚠️ 笔记尚未保存，是否保存？</p>
+        <p><IconWarning /> 笔记尚未保存，是否保存？</p>
         <div class="dialog-actions">
           <button class="btn-save" @click="confirmSave">保存并退出</button>
           <button class="btn-discard" @click="confirmDiscard">不保存退出</button>
@@ -103,6 +103,8 @@ import StageItem from './StageItem.vue'
 import NoteEditor from './NoteEditor.vue'
 import NoteAiChat from './NoteAiChat.vue'
 import type { PlanDetail as PlanDetailType, PlanStage, PlanItem } from '../../stores/plans'
+import IconArrowBack from '~icons/ic/baseline-arrow-back'
+import IconWarning from '~icons/ic/baseline-warning'
 
 const props = defineProps<{
   plan: PlanDetailType

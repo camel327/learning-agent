@@ -1,7 +1,8 @@
 <template>
   <div class="plan-list">
     <div v-if="plans.length === 0" class="empty">
-      <p>📭 暂无保存的学习路线</p>
+      <p><IconInbox style="font-size: 32px" /></p>
+      <p>暂无保存的学习路线</p>
       <p class="hint">在对话中保存的学习路线会出现在这里</p>
     </div>
     <div v-else class="cards">
@@ -12,8 +13,8 @@
         @click="$emit('select', plan.id)"
       >
         <div class="card-header">
-          <span class="topic">📚 {{ plan.topic }}</span>
-          <button class="delete-btn" @click.stop="$emit('delete', plan.id)">🗑</button>
+          <span class="topic"><IconLibrary /> {{ plan.topic }}</span>
+          <button class="delete-btn" @click.stop="$emit('delete', plan.id)"><IconDelete /></button>
         </div>
         <div class="card-time">{{ formatTime(plan.created_at) }}</div>
       </div>
@@ -23,6 +24,9 @@
 
 <script setup lang="ts">
 import type { LearningPlan } from '../../stores/plans'
+import IconLibrary from '~icons/ic/baseline-library-books'
+import IconDelete from '~icons/ic/baseline-delete'
+import IconInbox from '~icons/ic/baseline-inbox'
 
 defineProps<{
   plans: LearningPlan[]

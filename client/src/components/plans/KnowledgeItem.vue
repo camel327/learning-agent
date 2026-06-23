@@ -17,7 +17,7 @@
           @click="$emit('toggleNote', item.id)"
           title="笔记"
         >
-          📝
+          <IconNote />
         </button>
       </div>
     </div>
@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import VideoPopup from './VideoPopup.vue'
 import type { PlanItem } from '../../stores/plans'
+import IconNote from '~icons/ic/baseline-edit-note'
 
 defineProps<{
   item: PlanItem

@@ -1,16 +1,18 @@
 <template>
   <div class="chat-message" :class="[message.role]">
     <div class="avatar" :class="[message.role]">
-      {{ message.role === 'user' ? '👤' : '🤖' }}
+      <IconPerson v-if="message.role === 'user'" />
+      <IconSmartToy v-else />
     </div>
     <div class="bubble" :class="[message.role]">
       <div class="content markdown-body" v-html="renderedContent" />
       <div v-if="showSaveButton && !isSaved" class="actions">
         <n-button size="tiny" quaternary :loading="saving" @click="handleSave">
-          💾 保存路线
+          <template #icon><IconSave /></template>
+          保存路线
         </n-button>
       </div>
-      <div v-if="isSaved" class="saved-badge">✅ 已保存</div>
+      <div v-if="isSaved" class="saved-badge"><IconCheck /> 已保存</div>
     </div>
   </div>
 </template>
@@ -18,6 +20,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { NButton, useMessage } from 'naive-ui'
+import IconPerson from '~icons/ic/baseline-person'
+import IconSmartToy from '~icons/ic/baseline-smart-toy'
+import IconSave from '~icons/ic/baseline-save'
+import IconCheck from '~icons/ic/baseline-check-circle'
 import MarkdownIt from 'markdown-it'
 import type { Message } from '../composables/useChat'
 import { usePlans } from '../composables/usePlans'
@@ -108,6 +114,11 @@ async function handleSave() {
   justify-content: center;
   font-size: 16px;
   flex-shrink: 0;
+}
+
+.avatar :deep(svg) {
+  width: 18px;
+  height: 18px;
 }
 
 .avatar.user {

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { NConfigProvider, NMessageProvider, NDialogProvider, darkTheme } from 'naive-ui'
 import { ref, onMounted, provide } from 'vue'
+import IconMenu from '~icons/ic/baseline-menu'
+import IconSunny from '~icons/ic/baseline-wb-sunny'
+import IconDark from '~icons/ic/baseline-dark-mode'
+import IconSettings from '~icons/ic/baseline-settings'
 import ChatView from './views/ChatView.vue'
 import PlansView from './views/PlansView.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -65,15 +69,15 @@ function handleDeleteConversation(id: string) {
           <!-- 顶栏 -->
           <header class="app-header">
             <div class="header-left" @click="showSidebar = true">
-              <span class="menu-icon">☰</span>
+              <IconMenu class="menu-icon" />
               <h1>学习规划 Agent</h1>
             </div>
             <div class="header-actions">
               <n-button quaternary size="small" @click="toggleDark">
-                {{ isDark ? '☀️' : '🌙' }}
+                <template #icon><component :is="isDark ? IconSunny : IconDark" /></template>
               </n-button>
               <n-button quaternary size="small" @click="showConfig = true">
-                ⚙️
+                <template #icon><IconSettings /></template>
               </n-button>
             </div>
           </header>

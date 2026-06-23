@@ -1,27 +1,56 @@
 <template>
-  <div ref="containerRef" class="note-editor" :class="{ fullscreen: isFullscreen }">
+  <div
+    ref="containerRef"
+    class="note-editor"
+    :class="{ fullscreen: isFullscreen }"
+  >
     <div class="note-header">
-      <span class="note-title">📝 {{ title }} 笔记</span>
+      <span class="note-title"><IconNote /> {{ title }} 笔记</span>
       <div class="note-actions">
-        <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
+        <button
+          class="action-btn ai-btn"
+          @click="$emit('toggleAi')"
+          title="AI 助手"
+        >
+          <IconSmartToy />
+        </button>
         <button
           v-if="!editing"
           class="action-btn edit-btn"
           @click="startEdit"
           title="编辑"
         >
-          ✏️
+          <IconEdit />
         </button>
-        <button v-if="editing" class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
-        <button class="action-btn fs-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-          {{ isFullscreen ? '⊟' : '⛶' }}
+        <button
+          v-if="editing"
+          class="action-btn save-btn"
+          :disabled="!dirty"
+          @click="$emit('save')"
+          title="保存"
+        >
+          <IconSave />
         </button>
-        <button class="action-btn close-btn" @click="handleClose" title="收起">⊟</button>
+        <button
+          class="action-btn fs-btn"
+          @click="toggleFullscreen"
+          :title="isFullscreen ? '退出全屏' : '全屏'"
+        >
+          <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" />
+        </button>
+        <button class="action-btn close-btn" @click="handleClose" title="收起">
+          <IconClose />
+        </button>
       </div>
     </div>
 
     <!-- 预览模式 -->
-    <div v-if="!editing" class="preview-body markdown-body" @click="startEdit" v-html="renderedContent" />
+    <div
+      v-if="!editing"
+      class="preview-body markdown-body"
+      @click="startEdit"
+      v-html="renderedContent"
+    />
 
     <!-- 编辑模式 -->
     <div v-else ref="editorRef" class="editor-container" />
@@ -29,132 +58,165 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import MarkdownIt from 'markdown-it'
-import Vditor from 'vditor'
-import 'vditor/dist/index.css'
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  watch,
+  nextTick,
+} from "vue";
+import MarkdownIt from "markdown-it";
+import Vditor from "vditor";
+import "vditor/dist/index.css";
+import IconSmartToy from '~icons/ic/baseline-smart-toy'
+import IconEdit from '~icons/ic/baseline-edit'
+import IconSave from '~icons/ic/baseline-save'
+import IconFullscreen from '~icons/ic/baseline-fullscreen'
+import IconFullscreenExit from '~icons/ic/baseline-fullscreen-exit'
+import IconClose from '~icons/ic/baseline-close'
+import IconNote from '~icons/ic/baseline-edit-note'
 
 const props = defineProps<{
-  title: string
-  modelValue: string
-  dirty: boolean
-  isDark?: boolean
-  hasExistingNote?: boolean
-}>()
+  title: string;
+  modelValue: string;
+  dirty: boolean;
+  isDark?: boolean;
+  hasExistingNote?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  save: []
-  close: []
-  toggleAi: []
-}>()
+  "update:modelValue": [value: string];
+  save: [];
+  close: [];
+  toggleAi: [];
+}>();
 
-const md = new MarkdownIt({ linkify: true, breaks: true })
-const renderedContent = computed(() => md.render(props.modelValue || ''))
+const md = new MarkdownIt({ linkify: true, breaks: true });
+const renderedContent = computed(() => md.render(props.modelValue || ""));
 
-const editing = ref(!props.hasExistingNote)
-const isFullscreen = ref(false)
-const containerRef = ref<HTMLElement>()
-const editorRef = ref<HTMLElement>()
-let vditorInstance: Vditor | null = null
+const editing = ref(!props.hasExistingNote);
+const isFullscreen = ref(false);
+const containerRef = ref<HTMLElement>();
+const editorRef = ref<HTMLElement>();
+let vditorInstance: Vditor | null = null;
 
 function toggleFullscreen() {
-  if (!containerRef.value) return
+  if (!containerRef.value) return;
   if (!isFullscreen.value) {
     // 进入全屏：给 body 添加全屏类
-    document.body.classList.add('note-fullscreen-active')
-    containerRef.value.classList.add('fullscreen')
-    isFullscreen.value = true
+    document.body.classList.add("note-fullscreen-active");
+    containerRef.value.classList.add("fullscreen");
+    isFullscreen.value = true;
     // 禁止背景滚动
-    document.body.style.overflow = 'hidden'
+    document.body.style.overflow = "hidden";
   } else {
     // 退出全屏
-    document.body.classList.remove('note-fullscreen-active')
-    containerRef.value.classList.remove('fullscreen')
-    isFullscreen.value = false
-    document.body.style.overflow = ''
+    document.body.classList.remove("note-fullscreen-active");
+    containerRef.value.classList.remove("fullscreen");
+    isFullscreen.value = false;
+    document.body.style.overflow = "";
   }
 }
 
 function exitFullscreen() {
   if (isFullscreen.value) {
-    document.body.classList.remove('note-fullscreen-active')
-    containerRef.value?.classList.remove('fullscreen')
-    isFullscreen.value = false
-    document.body.style.overflow = ''
+    document.body.classList.remove("note-fullscreen-active");
+    containerRef.value?.classList.remove("fullscreen");
+    isFullscreen.value = false;
+    document.body.style.overflow = "";
   }
 }
 
 // ESC 退出全屏
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isFullscreen.value) {
-    exitFullscreen()
+  if (e.key === "Escape" && isFullscreen.value) {
+    exitFullscreen();
   }
 }
 
 onMounted(() => {
-  document.addEventListener('keydown', onKeydown)
+  document.addEventListener("keydown", onKeydown);
   if (editing.value) {
-    initVditor()
+    initVditor();
   }
-})
+});
 
 function startEdit() {
-  editing.value = true
-  nextTick(() => initVditor())
+  editing.value = true;
+  nextTick(() => initVditor());
 }
 
 function initVditor() {
-  if (!editorRef.value || vditorInstance) return
+  if (!editorRef.value || vditorInstance) return;
 
   vditorInstance = new Vditor(editorRef.value, {
-    mode: 'ir',
+    mode: "ir",
     value: props.modelValue,
-    theme: props.isDark ? 'dark' : 'classic',
+    theme: props.isDark ? "dark" : "classic",
     toolbar: [
-      'emoji', 'bold', 'italic', 'strike', '|',
-      'line', 'quote', 'list', 'ordered-list', '|',
-      'code', 'inline-code', 'table', '|',
-      'undo', 'redo', '|',
-      'edit-mode'
+      "emoji",
+      "bold",
+      "italic",
+      "strike",
+      "|",
+      "line",
+      "quote",
+      "list",
+      "ordered-list",
+      "|",
+      "code",
+      "inline-code",
+      "table",
+      "|",
+      "undo",
+      "redo",
+      "|",
+      "edit-mode",
     ],
     toolbarConfig: { hide: false },
-    outline: { enable: false, position: 'right' },
+    outline: { enable: false, position: "right" },
     cache: { enable: false },
-    resize: { enable: true, position: 'bottom' },
+    resize: { enable: true, position: "bottom" },
     height: 280,
     minHeight: 200,
     input: (value: string) => {
-      emit('update:modelValue', value)
-    }
-  })
+      emit("update:modelValue", value);
+    },
+  });
 }
 
-watch(() => props.modelValue, (val) => {
-  if (vditorInstance && val !== vditorInstance.getValue()) {
-    vditorInstance.setValue(val)
-  }
-})
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (vditorInstance && val !== vditorInstance.getValue()) {
+      vditorInstance.setValue(val);
+    }
+  },
+);
 
-watch(() => props.isDark, (dark) => {
-  if (vditorInstance) {
-    vditorInstance.setTheme(dark ? 'dark' : 'classic')
-  }
-})
+watch(
+  () => props.isDark,
+  (dark) => {
+    if (vditorInstance) {
+      vditorInstance.setTheme(dark ? "dark" : "classic");
+    }
+  },
+);
 
 function handleClose() {
-  exitFullscreen()
-  emit('close')
+  exitFullscreen();
+  emit("close");
 }
 
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown)
-  exitFullscreen()
+  document.removeEventListener("keydown", onKeydown);
+  exitFullscreen();
   if (vditorInstance) {
-    vditorInstance.destroy()
-    vditorInstance = null
+    vditorInstance.destroy();
+    vditorInstance = null;
   }
-})
+});
 </script>
 
 <style scoped>
@@ -213,8 +275,14 @@ onBeforeUnmount(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .note-header {
