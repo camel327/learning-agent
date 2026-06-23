@@ -14,9 +14,9 @@
         </button>
         <button v-if="editing" class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
         <button class="action-btn fs-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-          {{ isFullscreen ? '⊟' : '⊞' }}
+          {{ isFullscreen ? '⊟' : '⛶' }}
         </button>
-        <button class="action-btn close-btn" @click="handleClose" title="收起">▵</button>
+        <button class="action-btn close-btn" @click="handleClose" title="收起">⊟</button>
       </div>
     </div>
 
