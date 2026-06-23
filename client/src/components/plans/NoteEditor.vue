@@ -1,5 +1,5 @@
 <template>
-  <div class="note-editor">
+  <div ref="containerRef" class="note-editor" :class="{ fullscreen: isFullscreen }">
     <div class="note-header">
       <span class="note-title">📝 {{ title }} 笔记</span>
       <div class="note-actions">
@@ -13,14 +13,17 @@
         </button>
         <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
         <button v-if="editing" class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
+        <button class="action-btn fs-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+          {{ isFullscreen ? '⛶' : '⛶' }}
+        </button>
         <button class="action-btn close-btn" @click="handleClose" title="收起">✕</button>
       </div>
     </div>
 
-    <!-- 预览模式：渲染的 markdown -->
+    <!-- 预览模式 -->
     <div v-if="!editing" class="preview-body markdown-body" @click="startEdit" v-html="renderedContent" />
 
-    <!-- 编辑模式：vditor -->
+    <!-- 编辑模式 -->
     <div v-else ref="editorRef" class="editor-container" />
   </div>
 </template>
@@ -36,7 +39,7 @@ const props = defineProps<{
   modelValue: string
   dirty: boolean
   isDark?: boolean
-  hasExistingNote?: boolean // 是否已有保存的笔记
+  hasExistingNote?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -49,17 +52,35 @@ const emit = defineEmits<{
 const md = new MarkdownIt({ linkify: true, breaks: true })
 const renderedContent = computed(() => md.render(props.modelValue || ''))
 
-// 有已保存笔记时默认预览模式，否则直接编辑
 const editing = ref(!props.hasExistingNote)
-
+const isFullscreen = ref(false)
+const containerRef = ref<HTMLElement>()
 const editorRef = ref<HTMLElement>()
 let vditorInstance: Vditor | null = null
 
+function toggleFullscreen() {
+  if (!containerRef.value) return
+  if (!document.fullscreenElement) {
+    containerRef.value.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+  if (editing.value) {
+    initVditor()
+  }
+})
+
 function startEdit() {
   editing.value = true
-  nextTick(() => {
-    initVditor()
-  })
+  nextTick(() => initVditor())
 }
 
 function initVditor() {
@@ -74,7 +95,7 @@ function initVditor() {
       'line', 'quote', 'list', 'ordered-list', '|',
       'code', 'inline-code', 'table', '|',
       'undo', 'redo', '|',
-      'fullscreen', 'edit-mode'
+      'edit-mode'
     ],
     toolbarConfig: { hide: false },
     outline: { enable: false, position: 'right' },
@@ -88,21 +109,12 @@ function initVditor() {
   })
 }
 
-// 直接编辑模式下 onMounted 初始化
-onMounted(() => {
-  if (editing.value) {
-    initVditor()
-  }
-})
-
-// 外部值变化时同步到编辑器
 watch(() => props.modelValue, (val) => {
   if (vditorInstance && val !== vditorInstance.getValue()) {
     vditorInstance.setValue(val)
   }
 })
 
-// 暗色模式切换
 watch(() => props.isDark, (dark) => {
   if (vditorInstance) {
     vditorInstance.setTheme(dark ? 'dark' : 'classic')
@@ -110,10 +122,14 @@ watch(() => props.isDark, (dark) => {
 })
 
 function handleClose() {
+  if (isFullscreen.value && document.fullscreenElement) {
+    document.exitFullscreen()
+  }
   emit('close')
 }
 
 onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
   if (vditorInstance) {
     vditorInstance.destroy()
     vditorInstance = null
@@ -135,6 +151,37 @@ onBeforeUnmount(() => {
   background: #1a1a1a;
 }
 
+/* 全屏样式 */
+.note-editor.fullscreen {
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.note-editor.fullscreen .preview-body {
+  flex: 1;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.note-editor.fullscreen .editor-container {
+  flex: 1;
+  min-height: 0;
+}
+
+.note-editor.fullscreen :deep(.vditor) {
+  height: 100% !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.note-editor.fullscreen :deep(.vditor-content) {
+  flex: 1;
+  min-height: 0;
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -147,6 +194,7 @@ onBeforeUnmount(() => {
   padding: 8px 12px;
   background: #f8f8f8;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .dark .note-header {
@@ -198,6 +246,10 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+.fs-btn {
+  font-size: 15px;
+}
+
 /* 预览区域 */
 .preview-body {
   padding: 16px;
@@ -213,7 +265,6 @@ onBeforeUnmount(() => {
   background: rgba(24, 160, 88, 0.02);
 }
 
-/* Markdown 渲染样式 */
 .preview-body :deep(h1),
 .preview-body :deep(h2),
 .preview-body :deep(h3) {
