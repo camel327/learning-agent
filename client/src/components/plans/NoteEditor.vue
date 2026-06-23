@@ -13,8 +13,8 @@
         </button>
         <button class="action-btn ai-btn" @click="$emit('toggleAi')" title="AI 助手">🤖</button>
         <button v-if="editing" class="action-btn save-btn" :disabled="!dirty" @click="$emit('save')" title="保存">💾</button>
-        <button class="action-btn fs-btn" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
-          {{ isFullscreen ? '⛶' : '⛶' }}
+        <button class="action-btn fs-btn" @click.stop="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏'">
+          {{ isFullscreen ? '✕全屏' : '⬜全屏' }}
         </button>
         <button class="action-btn close-btn" @click="handleClose" title="收起">✕</button>
       </div>
@@ -59,10 +59,17 @@ const editorRef = ref<HTMLElement>()
 let vditorInstance: Vditor | null = null
 
 function toggleFullscreen() {
+  console.log('[NoteEditor] toggleFullscreen called, containerRef:', containerRef.value)
   if (!containerRef.value) return
   if (!document.fullscreenElement) {
-    containerRef.value.requestFullscreen()
+    console.log('[NoteEditor] requesting fullscreen...')
+    containerRef.value.requestFullscreen().then(() => {
+      console.log('[NoteEditor] fullscreen success')
+    }).catch(err => {
+      console.error('[NoteEditor] 全屏失败:', err)
+    })
   } else {
+    console.log('[NoteEditor] exiting fullscreen...')
     document.exitFullscreen()
   }
 }
@@ -152,24 +159,34 @@ onBeforeUnmount(() => {
 }
 
 /* 全屏样式 */
+.note-editor:fullscreen,
 .note-editor.fullscreen {
   border-radius: 0;
   display: flex;
   flex-direction: column;
   overflow: auto;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
 }
 
+.note-editor:fullscreen .preview-body,
 .note-editor.fullscreen .preview-body {
   flex: 1;
   max-height: none;
   overflow-y: auto;
 }
 
+.note-editor:fullscreen .editor-container,
 .note-editor.fullscreen .editor-container {
   flex: 1;
   min-height: 0;
 }
 
+.note-editor:fullscreen :deep(.vditor),
 .note-editor.fullscreen :deep(.vditor) {
   height: 100% !important;
   flex: 1;
@@ -177,6 +194,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
+.note-editor:fullscreen :deep(.vditor-content),
 .note-editor.fullscreen :deep(.vditor-content) {
   flex: 1;
   min-height: 0;
