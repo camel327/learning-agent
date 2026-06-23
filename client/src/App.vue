@@ -29,6 +29,7 @@ function toggleDark() {
 
 function handleNewChat() {
   chatStore.clearMessages()
+  currentView.value = 'chat'
   showSidebar.value = false
 }
 

@@ -1,7 +1,9 @@
 <template>
   <div class="plan-detail">
     <div class="detail-header">
-      <button class="back-btn" @click="$emit('back')"><IconArrowBack /> 返回列表</button>
+      <button class="back-btn" @click="$emit('back')">
+        <IconArrowBack /> 返回列表
+      </button>
       <h2 class="plan-topic">{{ plan.topic }}</h2>
       <div class="plan-progress">
         进度 {{ progress.completed }}/{{ progress.total }}
@@ -78,7 +80,7 @@
 
     <!-- 原始路线折叠 -->
     <details class="raw-content">
-      <summary>▶ 查看原始路线内容</summary>
+      <summary>查看原始路线内容</summary>
       <div class="raw-body" v-html="renderedContent"></div>
     </details>
 
@@ -88,8 +90,12 @@
         <p><IconWarning /> 笔记尚未保存，是否保存？</p>
         <div class="dialog-actions">
           <button class="btn-save" @click="confirmSave">保存并退出</button>
-          <button class="btn-discard" @click="confirmDiscard">不保存退出</button>
-          <button class="btn-cancel" @click="showSaveDialog = false">取消</button>
+          <button class="btn-discard" @click="confirmDiscard">
+            不保存退出
+          </button>
+          <button class="btn-cancel" @click="showSaveDialog = false">
+            取消
+          </button>
         </div>
       </div>
     </div>
@@ -97,128 +103,132 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import MarkdownIt from 'markdown-it'
-import StageItem from './StageItem.vue'
-import NoteEditor from './NoteEditor.vue'
-import NoteAiChat from './NoteAiChat.vue'
-import type { PlanDetail as PlanDetailType, PlanStage, PlanItem } from '../../stores/plans'
-import IconArrowBack from '~icons/ic/baseline-arrow-back'
-import IconWarning from '~icons/ic/baseline-warning'
+import { ref, computed } from "vue";
+import MarkdownIt from "markdown-it";
+import StageItem from "./StageItem.vue";
+import NoteEditor from "./NoteEditor.vue";
+import NoteAiChat from "./NoteAiChat.vue";
+import type {
+  PlanDetail as PlanDetailType,
+  PlanStage,
+  PlanItem,
+} from "../../stores/plans";
+import IconArrowBack from "~icons/ic/baseline-arrow-back";
+import IconWarning from "~icons/ic/baseline-warning";
 
 const props = defineProps<{
-  plan: PlanDetailType
-  openNoteId: string | null
-  noteContent: string
-  noteDirty: boolean
-  isDark?: boolean
-}>()
+  plan: PlanDetailType;
+  openNoteId: string | null;
+  noteContent: string;
+  noteDirty: boolean;
+  isDark?: boolean;
+}>();
 
 const emit = defineEmits<{
-  back: []
-  toggleStage: [stage: PlanStage]
-  toggleItem: [item: PlanItem]
-  openNote: [nodeId: string, note: string]
-  closeNote: []
-  updateNote: [value: string]
-  saveNote: [nodeId: string, isStage: boolean]
-}>()
+  back: [];
+  toggleStage: [stage: PlanStage];
+  toggleItem: [item: PlanItem];
+  openNote: [nodeId: string, note: string];
+  closeNote: [];
+  updateNote: [value: string];
+  saveNote: [nodeId: string, isStage: boolean];
+}>();
 
-const md = new MarkdownIt({ linkify: true, breaks: true })
-const renderedContent = computed(() => md.render(props.plan.content || ''))
+const md = new MarkdownIt({ linkify: true, breaks: true });
+const renderedContent = computed(() => md.render(props.plan.content || ""));
 
 const progress = computed(() => {
-  let completed = 0
-  let total = 0
+  let completed = 0;
+  let total = 0;
   for (const stage of props.plan.stages) {
     for (const item of stage.items) {
-      total++
-      if (item.completed) completed++
+      total++;
+      if (item.completed) completed++;
     }
   }
-  return { completed, total }
-})
+  return { completed, total };
+});
 
-const showAiChat = ref(false)
-const showSaveDialog = ref(false)
-const pendingClose = ref<(() => void) | null>(null)
+const showAiChat = ref(false);
+const showSaveDialog = ref(false);
+const pendingClose = ref<(() => void) | null>(null);
 
 function handleToggleNote(nodeId: string) {
   if (props.openNoteId === nodeId) {
-    handleClose()
+    handleClose();
   } else {
     if (props.noteDirty) {
-      pendingClose.value = () => doOpenNote(nodeId)
-      showSaveDialog.value = true
+      pendingClose.value = () => doOpenNote(nodeId);
+      showSaveDialog.value = true;
     } else {
-      doOpenNote(nodeId)
+      doOpenNote(nodeId);
     }
   }
 }
 
 function doOpenNote(nodeId: string) {
-  let note = ''
+  let note = "";
   for (const stage of props.plan.stages) {
     if (stage.id === nodeId) {
-      note = stage.note
-      break
+      note = stage.note;
+      break;
     }
     for (const item of stage.items) {
       if (item.id === nodeId) {
-        note = item.note
-        break
+        note = item.note;
+        break;
       }
     }
   }
-  emit('openNote', nodeId, note)
-  showAiChat.value = false
+  emit("openNote", nodeId, note);
+  showAiChat.value = false;
 }
 
 function handleClose() {
   if (props.noteDirty) {
-    pendingClose.value = () => emit('closeNote')
-    showSaveDialog.value = true
+    pendingClose.value = () => emit("closeNote");
+    showSaveDialog.value = true;
   } else {
-    emit('closeNote')
-    showAiChat.value = false
+    emit("closeNote");
+    showAiChat.value = false;
   }
 }
 
 function confirmSave() {
   if (props.openNoteId) {
-    let isStage = false
+    let isStage = false;
     for (const stage of props.plan.stages) {
       if (stage.id === props.openNoteId) {
-        isStage = true
-        break
+        isStage = true;
+        break;
       }
     }
-    emit('saveNote', props.openNoteId, isStage)
+    emit("saveNote", props.openNoteId, isStage);
   }
-  showSaveDialog.value = false
+  showSaveDialog.value = false;
   if (pendingClose.value) {
-    pendingClose.value()
-    pendingClose.value = null
+    pendingClose.value();
+    pendingClose.value = null;
   }
-  showAiChat.value = false
+  showAiChat.value = false;
 }
 
 function confirmDiscard() {
-  showSaveDialog.value = false
+  showSaveDialog.value = false;
   if (pendingClose.value) {
-    pendingClose.value()
-    pendingClose.value = null
+    pendingClose.value();
+    pendingClose.value = null;
   }
-  showAiChat.value = false
+  showAiChat.value = false;
 }
 
 function toggleAiChat() {
-  showAiChat.value = !showAiChat.value
+  showAiChat.value = !showAiChat.value;
 }
 
 function handleApply(content: string) {
-  emit('updateNote', content)
-  showAiChat.value = false
+  emit("updateNote", content);
+  showAiChat.value = false;
 }
 </script>
 
@@ -280,8 +290,14 @@ function handleApply(content: string) {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .raw-content {
