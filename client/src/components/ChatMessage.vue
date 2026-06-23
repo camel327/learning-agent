@@ -33,7 +33,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const message = useMessage()
+const nMessage = useMessage()
 const { savePlan } = usePlans()
 const saving = ref(false)
 const saved = ref(false)
@@ -76,10 +76,10 @@ async function handleSave() {
   try {
     await savePlan(topic, content, props.conversationId || undefined)
     saved.value = true
-    message.success('路线已保存')
+    nMessage.success('路线已保存')
     emit('saved')
   } catch (err: any) {
-    message.error('保存失败：' + err.message)
+    nMessage.error('保存失败：' + err.message)
   } finally {
     saving.value = false
   }

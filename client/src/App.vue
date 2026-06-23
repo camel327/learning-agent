@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NConfigProvider, NMessageProvider, NDialogProvider, darkTheme } from 'naive-ui'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, provide } from 'vue'
 import ChatView from './views/ChatView.vue'
 import PlansView from './views/PlansView.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -9,6 +9,7 @@ import { useChatStore } from './stores/chat'
 
 const chatStore = useChatStore()
 const isDark = ref(false)
+provide('isDark', isDark)
 const showConfig = ref(false)
 const showSidebar = ref(false)
 const currentView = ref<'chat' | 'plans'>('chat')

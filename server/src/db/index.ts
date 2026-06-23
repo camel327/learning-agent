@@ -56,6 +56,26 @@ function initTables(db: Database.Database) {
       conversation_id TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS plan_stages (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      completed INTEGER DEFAULT 0,
+      note TEXT DEFAULT '',
+      FOREIGN KEY (plan_id) REFERENCES learning_plans(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS plan_items (
+      id TEXT PRIMARY KEY,
+      stage_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      completed INTEGER DEFAULT 0,
+      note TEXT DEFAULT '',
+      FOREIGN KEY (stage_id) REFERENCES plan_stages(id) ON DELETE CASCADE
+    );
   `)
 }
 
@@ -169,5 +189,99 @@ export function getPlan(id: string): LearningPlan | undefined {
 }
 
 export function deletePlan(id: string) {
+  getDb().prepare('DELETE FROM plan_items WHERE stage_id IN (SELECT id FROM plan_stages WHERE plan_id = ?)').run(id)
+  getDb().prepare('DELETE FROM plan_stages WHERE plan_id = ?').run(id)
   getDb().prepare('DELETE FROM learning_plans WHERE id = ?').run(id)
+}
+
+// ---- Plan Stages & Items 存取 ----
+
+export interface PlanStage {
+  id: string
+  plan_id: string
+  title: string
+  sort_order: number
+  completed: number
+  note: string
+}
+
+export interface PlanItem {
+  id: string
+  stage_id: string
+  title: string
+  sort_order: number
+  completed: number
+  note: string
+}
+
+export interface PlanDetail extends LearningPlan {
+  stages: (PlanStage & { items: PlanItem[] })[]
+}
+
+export function savePlanWithStructure(
+  planId: string,
+  topic: string,
+  content: string,
+  stages: { title: string; items: { title: string }[] }[],
+  conversationId?: string
+) {
+  const db = getDb()
+  const insertPlan = db.prepare('INSERT INTO learning_plans (id, topic, content, conversation_id) VALUES (?, ?, ?, ?)')
+  const insertStage = db.prepare('INSERT INTO plan_stages (id, plan_id, title, sort_order) VALUES (?, ?, ?, ?)')
+  const insertItem = db.prepare('INSERT INTO plan_items (id, stage_id, title, sort_order) VALUES (?, ?, ?, ?)')
+
+  const transaction = db.transaction(() => {
+    insertPlan.run(planId, topic, content, conversationId || null)
+    stages.forEach((stage, si) => {
+      const stageId = `${planId}-s${si}`
+      insertStage.run(stageId, planId, stage.title, si)
+      stage.items.forEach((item, ii) => {
+        insertItem.run(`${stageId}-i${ii}`, stageId, item.title, ii)
+      })
+    })
+  })
+
+  transaction()
+}
+
+export function getPlanDetail(planId: string): PlanDetail | undefined {
+  const plan = getDb().prepare('SELECT * FROM learning_plans WHERE id = ?').get(planId) as LearningPlan | undefined
+  if (!plan) return undefined
+
+  const stages = getDb().prepare(
+    'SELECT * FROM plan_stages WHERE plan_id = ? ORDER BY sort_order ASC'
+  ).all(planId) as PlanStage[]
+
+  const stagesWithItems = stages.map(stage => {
+    const items = getDb().prepare(
+      'SELECT * FROM plan_items WHERE stage_id = ? ORDER BY sort_order ASC'
+    ).all(stage.id) as PlanItem[]
+    return { ...stage, items }
+  })
+
+  return { ...plan, stages: stagesWithItems }
+}
+
+export function updateStageCompletion(stageId: string, completed: number) {
+  getDb().prepare('UPDATE plan_stages SET completed = ? WHERE id = ?').run(completed, stageId)
+}
+
+export function updateItemCompletion(itemId: string, completed: number) {
+  getDb().prepare('UPDATE plan_items SET completed = ? WHERE id = ?').run(completed, itemId)
+}
+
+export function updateStageNote(stageId: string, note: string) {
+  getDb().prepare('UPDATE plan_stages SET note = ? WHERE id = ?').run(note, stageId)
+}
+
+export function updateItemNote(itemId: string, note: string) {
+  getDb().prepare('UPDATE plan_items SET note = ? WHERE id = ?').run(note, itemId)
+}
+
+export function getStageById(stageId: string): PlanStage | undefined {
+  return getDb().prepare('SELECT * FROM plan_stages WHERE id = ?').get(stageId) as PlanStage | undefined
+}
+
+export function getItemById(itemId: string): PlanItem | undefined {
+  return getDb().prepare('SELECT * FROM plan_items WHERE id = ?').get(itemId) as PlanItem | undefined
 }
