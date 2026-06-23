@@ -59,17 +59,10 @@ const editorRef = ref<HTMLElement>()
 let vditorInstance: Vditor | null = null
 
 function toggleFullscreen() {
-  console.log('[NoteEditor] toggleFullscreen called, containerRef:', containerRef.value)
   if (!containerRef.value) return
   if (!document.fullscreenElement) {
-    console.log('[NoteEditor] requesting fullscreen...')
-    containerRef.value.requestFullscreen().then(() => {
-      console.log('[NoteEditor] fullscreen success')
-    }).catch(err => {
-      console.error('[NoteEditor] 全屏失败:', err)
-    })
+    containerRef.value.requestFullscreen().catch(() => {})
   } else {
-    console.log('[NoteEditor] exiting fullscreen...')
     document.exitFullscreen()
   }
 }
