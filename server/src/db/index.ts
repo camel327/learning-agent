@@ -64,6 +64,7 @@ function initTables(db: Database.Database) {
       sort_order INTEGER NOT NULL,
       completed INTEGER DEFAULT 0,
       note TEXT DEFAULT '',
+      videos TEXT DEFAULT '[]',
       FOREIGN KEY (plan_id) REFERENCES learning_plans(id) ON DELETE CASCADE
     );
 
@@ -74,9 +75,18 @@ function initTables(db: Database.Database) {
       sort_order INTEGER NOT NULL,
       completed INTEGER DEFAULT 0,
       note TEXT DEFAULT '',
+      videos TEXT DEFAULT '[]',
       FOREIGN KEY (stage_id) REFERENCES plan_stages(id) ON DELETE CASCADE
     );
   `)
+
+  // 迁移：为已有表添加 videos 列（如果不存在）
+  try {
+    db.exec(`ALTER TABLE plan_stages ADD COLUMN videos TEXT DEFAULT '[]'`)
+  } catch { /* 列已存在，忽略 */ }
+  try {
+    db.exec(`ALTER TABLE plan_items ADD COLUMN videos TEXT DEFAULT '[]'`)
+  } catch { /* 列已存在，忽略 */ }
 }
 
 // ---- Config 存取 ----
@@ -196,6 +206,13 @@ export function deletePlan(id: string) {
 
 // ---- Plan Stages & Items 存取 ----
 
+export interface VideoInfo {
+  title: string
+  url: string
+  up: string
+  views: string
+}
+
 export interface PlanStage {
   id: string
   plan_id: string
@@ -203,6 +220,7 @@ export interface PlanStage {
   sort_order: number
   completed: number
   note: string
+  videos: string // JSON string of VideoInfo[]
 }
 
 export interface PlanItem {
@@ -212,31 +230,37 @@ export interface PlanItem {
   sort_order: number
   completed: number
   note: string
+  videos: string // JSON string of VideoInfo[]
+}
+
+export interface PlanStageWithItems extends Omit<PlanStage, 'videos'> {
+  videos: VideoInfo[]
+  items: (Omit<PlanItem, 'videos'> & { videos: VideoInfo[] })[]
 }
 
 export interface PlanDetail extends LearningPlan {
-  stages: (PlanStage & { items: PlanItem[] })[]
+  stages: PlanStageWithItems[]
 }
 
 export function savePlanWithStructure(
   planId: string,
   topic: string,
   content: string,
-  stages: { title: string; items: { title: string }[] }[],
+  stages: { title: string; items: { title: string; videos?: VideoInfo[] }[]; videos?: VideoInfo[] }[],
   conversationId?: string
 ) {
   const db = getDb()
   const insertPlan = db.prepare('INSERT INTO learning_plans (id, topic, content, conversation_id) VALUES (?, ?, ?, ?)')
-  const insertStage = db.prepare('INSERT INTO plan_stages (id, plan_id, title, sort_order) VALUES (?, ?, ?, ?)')
-  const insertItem = db.prepare('INSERT INTO plan_items (id, stage_id, title, sort_order) VALUES (?, ?, ?, ?)')
+  const insertStage = db.prepare('INSERT INTO plan_stages (id, plan_id, title, sort_order, videos) VALUES (?, ?, ?, ?, ?)')
+  const insertItem = db.prepare('INSERT INTO plan_items (id, stage_id, title, sort_order, videos) VALUES (?, ?, ?, ?, ?)')
 
   const transaction = db.transaction(() => {
     insertPlan.run(planId, topic, content, conversationId || null)
     stages.forEach((stage, si) => {
       const stageId = `${planId}-s${si}`
-      insertStage.run(stageId, planId, stage.title, si)
+      insertStage.run(stageId, planId, stage.title, si, JSON.stringify(stage.videos || []))
       stage.items.forEach((item, ii) => {
-        insertItem.run(`${stageId}-i${ii}`, stageId, item.title, ii)
+        insertItem.run(`${stageId}-i${ii}`, stageId, item.title, ii, JSON.stringify(item.videos || []))
       })
     })
   })
@@ -256,10 +280,27 @@ export function getPlanDetail(planId: string): PlanDetail | undefined {
     const items = getDb().prepare(
       'SELECT * FROM plan_items WHERE stage_id = ? ORDER BY sort_order ASC'
     ).all(stage.id) as PlanItem[]
-    return { ...stage, items }
+
+    return {
+      ...stage,
+      videos: parseVideosJson(stage.videos),
+      items: items.map(item => ({
+        ...item,
+        videos: parseVideosJson(item.videos)
+      }))
+    }
   })
 
   return { ...plan, stages: stagesWithItems }
+}
+
+function parseVideosJson(videos: string | null): VideoInfo[] {
+  if (!videos) return []
+  try {
+    return JSON.parse(videos)
+  } catch {
+    return []
+  }
 }
 
 export function updateStageCompletion(stageId: string, completed: number) {

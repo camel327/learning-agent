@@ -90,5 +90,7 @@ async function handleSaveNote(nodeId: string, isStage: boolean) {
 .plans-view {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
+  height: 100%;
 }
 </style>

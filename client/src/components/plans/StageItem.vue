@@ -10,14 +10,17 @@
         />
         <span :class="{ done: stage.completed === 1 }">{{ stage.title }}</span>
       </label>
-      <button
-        class="note-btn"
-        :class="{ active: isNoteOpen, hasNote: stage.note }"
-        @click.stop="$emit('toggleNote', stage.id)"
-        title="阶段笔记"
-      >
-        📝
-      </button>
+      <div class="stage-actions">
+        <VideoPopup v-if="stage.videos && stage.videos.length > 0" :videos="stage.videos" />
+        <button
+          class="note-btn"
+          :class="{ active: isNoteOpen, hasNote: stage.note }"
+          @click.stop="$emit('toggleNote', stage.id)"
+          title="阶段笔记"
+        >
+          📝
+        </button>
+      </div>
     </div>
 
     <div v-show="expanded" class="stage-items">
@@ -36,6 +39,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import KnowledgeItem from './KnowledgeItem.vue'
+import VideoPopup from './VideoPopup.vue'
 import type { PlanStage, PlanItem } from '../../stores/plans'
 
 const props = defineProps<{
@@ -105,6 +109,12 @@ const isNoteOpen = computed(() => props.openNoteId === props.stage.id)
 .done {
   text-decoration: line-through;
   color: #999;
+}
+
+.stage-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .note-btn {

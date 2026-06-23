@@ -9,19 +9,23 @@
         />
         <span :class="{ done: item.completed === 1 }">{{ item.title }}</span>
       </label>
-      <button
-        class="note-btn"
-        :class="{ active: isNoteOpen, hasNote: item.note }"
-        @click="$emit('toggleNote', item.id)"
-        title="笔记"
-      >
-        📝
-      </button>
+      <div class="item-actions">
+        <VideoPopup v-if="item.videos && item.videos.length > 0" :videos="item.videos" />
+        <button
+          class="note-btn"
+          :class="{ active: isNoteOpen, hasNote: item.note }"
+          @click="$emit('toggleNote', item.id)"
+          title="笔记"
+        >
+          📝
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import VideoPopup from './VideoPopup.vue'
 import type { PlanItem } from '../../stores/plans'
 
 defineProps<{
@@ -78,6 +82,12 @@ defineEmits<{
 .done {
   text-decoration: line-through;
   color: #999;
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .note-btn {

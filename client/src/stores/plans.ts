@@ -2,6 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 // 类型定义
+export interface VideoInfo {
+  title: string
+  url: string
+  up: string
+  views: string
+}
+
 export interface PlanItem {
   id: string
   stage_id: string
@@ -9,6 +16,7 @@ export interface PlanItem {
   sort_order: number
   completed: number
   note: string
+  videos: VideoInfo[]
 }
 
 export interface PlanStage {
@@ -18,6 +26,7 @@ export interface PlanStage {
   sort_order: number
   completed: number
   note: string
+  videos: VideoInfo[]
   items: PlanItem[]
 }
 
